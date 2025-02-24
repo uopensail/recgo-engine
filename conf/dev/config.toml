@@ -1,0 +1,95 @@
+[server]
+project_name = "honghu_engine"
+grpc_port = 3527
+http_port = 3528
+prome_port = 3529
+pprof_port = 3530
+debug = true
+
+[absdk]
+scene_id = 1
+cache_size = 1000
+ttl = 300
+schema = "grpc"
+[absdk.kongmingcli]
+zkhosts = ["10.100.80.2:2181"]
+service_name = "kongming_server"
+
+[logsdk]
+channel_size = 10000
+flush_interval = 1
+[logsdk.pangu]
+zkhosts = ["10.100.80.2:2181"]
+service_name = "pangu_server"
+
+[fukucli]
+zkhosts = ["10.100.80.2:2181"]
+service_name = "fuku_server"
+
+[datasource]
+[datasource.items]
+name = "items"
+[datasource.items.download_config]
+timeout = 300
+type = "oss"
+region = "oss-cn-hangzhou"
+endpoint = "oss-cn-hangzhou-internal.aliyuncs.com"
+access_key = "LTAI5tCM6no8PRsiNiXUJsF5"
+secret_key = "Bilr4fX1aqrkkPEQL76ht86nmsbEfP"
+source_path = "oss://dev-kproject/online/items/items.tar.gz"
+local_path = "/opt/data/honghu/items.tar.gz"
+[datasource.items.download_config.extra]
+tar_dir = "items"
+
+[strategies]
+[[strategies.feed_default.user_freq.time_freq]]
+time = 180
+num = 1
+[[strategies.feed_default.user_freq.time_freq]]
+time = 86400
+num = 10
+[strategies.feed_default.normal_recall]
+timeout = 50
+[strategies.feed_default.normal_recall.recalls.rand]
+recall_type = "rand"
+num = 100
+top_k = 50
+[strategies.feed_default.normal_recall.recalls.hottest_cat]
+recall_type = "hottest_cat"
+[strategies.feed_default.simple_recall]
+timeout = 60
+[strategies.feed_default.simple_recall.recalls.simple]
+recall_type = "simple"
+num = 100
+top_k = 50
+[[strategies.feed_default.weighed.weighers]]
+name = "rand"
+factor = 1.4
+[[strategies.feed_default.weighed.weighers]]
+name = "simple"
+factor = 1.3
+
+[[strategies.feed_default.layout.pos_chooser.0]]
+name = "recall"
+[strategies.feed_default.layout.pos_chooser.0.extra]
+recall_name = "hottest_cat"
+[[strategies.feed_default.layout.pos_chooser.1]]
+name = "recall"
+[strategies.feed_default.layout.pos_chooser.1.extra]
+recall_name = "hottest_cat"
+[[strategies.feed_default.layout.pos_chooser.2]]
+name = "recall"
+[strategies.feed_default.layout.pos_chooser.2.extra]
+recall_name = "rand"
+[[strategies.feed_default.layout.pos_chooser.3]]
+name = "recall"
+[strategies.feed_default.layout.pos_chooser.3.extra]
+recall_name = "hottest_cat"
+[[strategies.feed_default.layout.pos_chooser.4]]
+name = "recall"
+[strategies.feed_default.layout.pos_chooser.4.extra]
+recall_name = "rand"
+[[strategies.feed_default.layout.pos_chooser.5]]
+name = "recall"
+[strategies.feed_default.layout.pos_chooser.5.extra]
+recall_name = "rand"

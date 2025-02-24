@@ -1,0 +1,96 @@
+.
+├── LICENSE
+├── Makefile                            //编译部署 make [dev|prod|test]
+├── README.md
+├── apiproto                            //api的protobuf协议，同时支持http+json/GRPC
+│   ├── genproto.sh                     //bash genproto.sh 生成协议
+│   ├── recapi.proto                    // honghu protobuf
+│   ├── recproto                        //golang输出目录
+│   │   ├── recapi.pb.go
+│   │   ├── recapi_grpc.pb.go
+│   │   └── user_feature.pb.go
+│   └── user_feature.proto              // fuku protobuf
+├── conf                                // [dev|prod|test] toml配置文件
+│   ├── dev
+│   │   ├── config.toml
+│   │   ├── test_data                   //测试数据未上传git 
+│   │   │   ├── db.meta.toml            //物料吃的meta信息主要声明primary_key和哪些字段自建索引
+│   │   │   ├── indexes                 //需要加载的索引
+│   │   │   │   └── hotest_cat_cat_2
+│   │   │   ├── items.tfrecord
+│   │   │   └── seller.tf               //tf格式的物料池
+│   │   └── test_data.tar.gz
+│   ├── local
+│   │   └── config.toml
+│   ├── pre
+│   │   └── config.toml
+│   ├── prod
+│   │   └── config.toml
+│   └── test
+│       ├── config.toml
+├── config                              //与conf toml匹配的定义的struct
+│   ├── config.go
+│   └── config_test.go
+├── datasource                          //物料池
+│   ├── db.go                           //负责定时加载物料
+│   ├── db_meta.go
+│   ├── db_test.go
+│   ├── items.go                        //主物料表
+│   ├── items_indexes.go                //建议物料的索引
+│   ├── items_test.go
+│   └── items_tf.go
+├── docs                                
+│   ├── docs.go
+│   ├── swagger.json
+│   └── swagger.yaml
+├── go.mod                              //升级了依赖包 需要进行go mod tidy，然后提交git commit
+├── go.sum
+├── main.go                             //读取toml配置，初始化zlog，创建Services实例，启动Promethues服务、PProf、Http、grpc监听端口
+├── main_test.go
+├── model                               //引擎定义的公共的model
+│   ├── model.go
+│   ├── redis_client.go
+│   └── utils.go
+├── package.sh
+├── run.sh                              //用于部署服务的启动脚本
+├── services                            //封装Http API和GRPC 
+│   ├── api.go
+│   ├── feed_defalut.go                 //home推荐入口，主要服务初始化UserContext，根据UserContext选择策略
+│   ├── feed_related.go                 //相关推荐
+│   └── services.go                     //负责初始化ABSDK、logSDK、fukuClient、加载物料
+├── strategy                            //策略集合
+│   ├── factory.go                      //创建策略集合
+│   ├── layout                          //排版
+│   │   ├── chooser                     //选择器
+│   │   │   ├── chooser.go
+│   │   │   ├── factory.go
+│   │   │   └── recall.go
+│   │   ├── layout.go                   //排版的主要逻辑，集成选择器和过滤器，排版入口
+│   │   └── limit
+│   │       ├── factory.go
+│   │       ├── limit.go
+│   │       ├── statefull               //上下文状态的过滤器
+│   │       │   └── cat.go
+│   │       └── stateless               //上下文无关的过滤器
+│   │           └── must_be_recall.go
+│   ├── rank                            //调用排序服务的入口
+│   │   └── rank.go
+│   ├── recall                          //召回
+│   │   ├── factory.go
+│   │   ├── hottest.go
+│   │   ├── hottest_cat.go
+│   │   ├── rand.go
+│   │   ├── recall.go                   //多路召回，召回入口
+│   │   └── simple.go
+│   ├── strategy.go
+│   └── weighed                         //调权器
+│       ├── factory.go
+│       ├── recall.go                   
+│       └── weighed.go                  //调权入口
+└── userctx                             //用户上下文，会伴随推荐整个流程
+    ├── user_ab.go                      //ab信息，命中的实验列表会存下
+    ├── user_features.go                //从fuku获取的用户特征
+    ├── user_features_ex.go             //解析扩张fuku特征
+    ├── user_freq.go                    //解析频控信息，计算哪些物料会被过滤
+    ├── user_freq_test.go
+    └── userctx.go                      //负责初始化ab、fuku特征、频控信息
