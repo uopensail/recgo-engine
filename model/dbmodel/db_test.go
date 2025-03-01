@@ -175,10 +175,6 @@ func makeInsertGroupEntity() table.InsertGroupEntityMeta {
 func Test_dBTablesDump(t *testing.T) {
 	insertMeta, insertRecallMeta := makeInsertEntity()
 	tables := DBTables{
-		Pools: []table.PoolMeta{makeDefaultPool()},
-		RecallResources: []table.RecallResourceMeta{makeFileRecallResource(1, "cat_hotest", "/tmp/sunmao/cat_hotest_file.txt"),
-			makeFileRecallResource(2, "w2v", "/tmp/sunmao/w2v_file.txt"),
-			makeRedisRecallResource(3)},
 		RecallEntities: []table.RecallEntityMeta{insertRecallMeta, makeRecallEntity("w2v",
 			`
 		create recall w2v as

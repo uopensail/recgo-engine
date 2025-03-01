@@ -20,8 +20,6 @@ import (
 )
 
 type DBTables struct {
-	Pools               []table.PoolMeta              `json:"pool" toml:"pool"`
-	RecallResources     []table.RecallResourceMeta    `json:"recall_resources" toml:"recall_resources"`
 	FilterResources     []table.FilterResourceMeta    `json:"filter_resources" toml:"filter_resources"`
 	AbMetas             []table.ABMeta                `json:"ab_metas" toml:"ab_metas"`
 	RecallEntities      []table.RecallEntityMeta      `json:"recall_entities" toml:"recall_entities"`
@@ -90,8 +88,6 @@ func LoadDBTabelModel(metaPath string) (DBTabelModel, error) {
 		return DBTabelModel{}, err
 	}
 	dbModel := DBTabelModel{}
-	dbModel.resourceTableModel.Init(tables.Pools)
-	dbModel.RecallSourceTableModel.Init(tables.RecallResources)
 	dbModel.ABEntityTableModel.Init(tables.AbMetas)
 	dbModel.RecallEntityTableModel.Init(tables.RecallEntities)
 	dbModel.RecallGroupEntityTableModel.Init(tables.RecallGroupEntities)
@@ -115,8 +111,6 @@ func loadAllablesFromDB(dsn string) (DBTables, error) {
 		return DBTables{}, err
 	}
 	var dbModel DBTables
-	load(db, "pools", &dbModel.Pools)
-	load(db, "recall_resource", &dbModel.RecallResources)
 	load(db, "filter_resource", &dbModel.FilterResources)
 	load(db, "ab_entity", &dbModel.AbMetas)
 	load(db, "recall_entity", &dbModel.RecallEntities)
