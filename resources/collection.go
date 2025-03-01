@@ -1,4 +1,4 @@
-package poolsource
+package resources
 
 import (
 	"sort"
@@ -13,6 +13,25 @@ import (
 )
 
 type Collection []int
+
+// BinarySearch 二分查找函数
+func BinarySearch(arr Collection, target int) bool {
+	low := 0
+	high := len(arr) - 1
+
+	for low <= high {
+		mid := low + (high-low)/2 // 避免溢出
+		if arr[mid] == target {
+			return true // 找到目标值
+		} else if arr[mid] < target {
+			low = mid + 1 // 目标值在右半部分
+		} else {
+			high = mid - 1 // 目标值在左半部分
+		}
+	}
+
+	return false // 未找到目标值
+}
 
 func BuildCollectionBitmap(pl *pool.Pool, collection Collection, sourceName string, condition string) datastruct.BitMap {
 	stat := prome.NewStat("BuildCollection")
@@ -60,13 +79,13 @@ func BuildCollection(pl *pool.Pool, collection Collection, sourceName string, co
 	ret := make([]int, 0, len(collection))
 	for i := 0; i < len(collection); i++ {
 		slice := evaluator.Allocate()
-		itemID := collection[i]
-		item := pl.GetById(itemID)
+		id := collection[i]
+		item := pl.GetById(id)
 		if item != nil {
 			evaluator.Fill(sourceName, &item.Feats, slice)
 			status = evaluator.Eval(slice)
 			if status == 1 {
-				ret = append(ret, itemID)
+				ret = append(ret, id)
 			}
 		}
 

@@ -4,13 +4,9 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/uopensail/recgo-engine/model/utils"
-	"gorm.io/datatypes"
-	"gorm.io/gorm"
-	"gorm.io/gorm/schema"
 )
 
 type OrderByMeta struct {
@@ -67,19 +63,33 @@ func (s DSLMeta) GormDataType() string {
 	return "json"
 }
 
+type InvertInexRecallMeta struct {
+	Resource          string   `json:"resource" toml:"resource"`
+	UserFeatureFields []string `json:"user_feature_fields" toml:"user_feature_fields"`
+	EachMaxCol        int      `json:"each_max_col" toml:"each_max_col"`
+	TopK              int      `json:"top_k" toml:"top_k"`
+}
+
+type ConditionRecallMeta struct {
+	Condition string `json:"condition" toml:"condition"`
+}
+
 type RecallEntityMeta struct {
 	EntityMeta `json:",inline" toml:",inline" gorm:"embedded"`
 
-	DSL     string `json:"dsl" toml:"dsl" gorm:"column:dsl"`
-	DSLMeta `json:"dsl_json" toml:"dsl_json" gorm:"column:dsl_json"`
+	PluginParams XJSON `json:"plugin_params" toml:"plugin_params" gorm:"column:plugin_params"`
 }
 
-func (c RecallEntityMeta) GetID() int {
-	return c.ID
+func (c *RecallEntityMeta) ParseInvertInexRecallMeta() InvertInexRecallMeta {
+	invertInexRecallMeta := InvertInexRecallMeta{}
+	json.Unmarshal([]byte(c.PluginParams), invertInexRecallMeta)
+	return invertInexRecallMeta
 }
 
-func (c RecallEntityMeta) GetUpdateTime() int64 {
-	return c.UpdateTime.Unix()
+func (c *RecallEntityMeta) ParseConditionRecallMeta() ConditionRecallMeta {
+	conditionRecallMeta := ConditionRecallMeta{}
+	json.Unmarshal([]byte(c.PluginParams), conditionRecallMeta)
+	return conditionRecallMeta
 }
 
 // 召回组计算实体
@@ -91,14 +101,6 @@ type RecallGroupEntityMeta struct {
 	EntityWeights map[int]float32
 }
 
-func (c RecallGroupEntityMeta) GetID() int {
-	return c.ID
-}
-
-func (c RecallGroupEntityMeta) GetUpdateTime() int64 {
-	return c.UpdateTime.Unix()
-}
-
 // redis的配置
 type BaseResourceMeta struct {
 	ID         int       `json:"id" toml:"id" gorm:"primaryKey;column:id"`
@@ -107,98 +109,6 @@ type BaseResourceMeta struct {
 	UpdateTime time.Time `json:"update_time" toml:"update_time" gorm:"column:update_time;autoUpdateTime"`
 
 	Source XJSON `json:"source" toml:"source" gorm:"column:source"`
-}
-type XJSON datatypes.JSON
-
-// MarshalJSON returns m as the JSON encoding of m.
-func (m XJSON) MarshalTOML() ([]byte, error) {
-	s := string(m)
-	return json.Marshal(s)
-}
-
-// UnmarshalJSON sets *m to a copy of data.
-func (m *XJSON) UnmarshalText(data []byte) error {
-	if m == nil {
-		return errors.New("XJSON: UnmarshalTOML on nil pointer")
-	}
-
-	(*m) = append((*m)[0:0], data...)
-	return nil
-}
-
-// Value return json value, implement driver.Valuer interface
-func (j XJSON) Value() (driver.Value, error) {
-	if len(j) == 0 {
-		return nil, nil
-	}
-	return string(j), nil
-}
-
-// Scan scan value into Jsonb, implements sql.Scanner interface
-func (j *XJSON) Scan(value interface{}) error {
-	if value == nil {
-		*j = XJSON("null")
-		return nil
-	}
-	var bytes []byte
-	switch v := value.(type) {
-	case []byte:
-		if len(v) > 0 {
-			bytes = make([]byte, len(v))
-			copy(bytes, v)
-		}
-	case string:
-		bytes = []byte(v)
-	default:
-		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", value))
-	}
-
-	result := json.RawMessage(bytes)
-	*j = XJSON(result)
-	return nil
-}
-
-// MarshalJSON to output non base64 encoded []byte
-func (j XJSON) MarshalJSON() ([]byte, error) {
-	return json.RawMessage(j).MarshalJSON()
-}
-
-// UnmarshalJSON to deserialize []byte
-func (j *XJSON) UnmarshalJSON(b []byte) error {
-	result := json.RawMessage{}
-	err := result.UnmarshalJSON(b)
-	*j = XJSON(result)
-	return err
-}
-
-func (j XJSON) String() string {
-	return string(j)
-}
-
-// GormDataType gorm common data type
-func (XJSON) GormDataType() string {
-	return "json"
-}
-
-// GormDBDataType gorm db data type
-func (XJSON) GormDBDataType(db *gorm.DB, field *schema.Field) string {
-	switch db.Dialector.Name() {
-	case "sqlite":
-		return "JSON"
-	case "mysql":
-		return "JSON"
-	case "postgres":
-		return "JSONB"
-	}
-	return ""
-}
-
-func (c BaseResourceMeta) GetID() int {
-	return c.ID
-}
-
-func (c BaseResourceMeta) GetUpdateTime() int64 {
-	return c.UpdateTime.Unix()
 }
 
 type RedisResourceConfig struct {
@@ -229,4 +139,8 @@ func (c *RecallResourceMeta) ParseRedisSource() {
 
 func (c RecallResourceMeta) GetID() int {
 	return c.ID
+}
+
+func (c RecallResourceMeta) GetUpdateTime() int64 {
+	return c.UpdateTime.Unix()
 }

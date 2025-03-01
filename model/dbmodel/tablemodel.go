@@ -33,7 +33,7 @@ func (tableModel *TableModel[T]) Get(id int) *T {
 }
 
 type DBTabelModel struct {
-	PoolSourceTableModel   TableModel[table.PoolMeta]           //内容表
+	resourceTableModel     TableModel[table.PoolMeta]           //内容表
 	RecallSourceTableModel TableModel[table.RecallResourceMeta] //召回源表
 
 	table.ABEntityTableModel //AB 表

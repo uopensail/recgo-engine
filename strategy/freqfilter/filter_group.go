@@ -1,4 +1,4 @@
-package filter
+package freqfilter
 
 import (
 	"strconv"
@@ -7,7 +7,7 @@ import (
 	"github.com/uopensail/recgo-engine/model/dbmodel"
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
 
-	"github.com/uopensail/recgo-engine/strategy/filter/resource"
+	"github.com/uopensail/recgo-engine/strategy/freqfilter/resource"
 
 	"github.com/uopensail/recgo-engine/userctx"
 	"github.com/uopensail/ulib/pool"
@@ -101,12 +101,9 @@ func (entity *FilterGroupEntity) Meta() *table.FilterGroupEntityMeta {
 func (entity *FilterGroupEntity) Do(uCtx *userctx.UserContext) (IFliter, error) {
 	stat := prome.NewStat("Filter.Do")
 	defer stat.End()
-	filterRuntime := newFilterRuntime(entity.Entities, uCtx.Pool)
+	filterRuntime := newFilterRuntime(entity.Entities, uCtx.Ress.Pool)
 	filterRuntime.build(uCtx.UID(), uCtx.FilterRess)
-	//add api exclude
-	for i := 0; i < len(uCtx.ExcludeList); i++ {
-		filterRuntime.block.Put(uCtx.ExcludeList[i])
-	}
+
 	return filterRuntime, nil
 }
 

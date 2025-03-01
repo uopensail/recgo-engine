@@ -6,13 +6,13 @@ import (
 	"github.com/uopensail/recgo-engine/model"
 	"github.com/uopensail/recgo-engine/model/dbmodel"
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
-	"github.com/uopensail/recgo-engine/poolsource"
-	"github.com/uopensail/recgo-engine/strategy/filter"
-	fresource "github.com/uopensail/recgo-engine/strategy/filter/resource"
+	"github.com/uopensail/recgo-engine/resources"
+	"github.com/uopensail/recgo-engine/strategy/freqfilter"
+	fresource "github.com/uopensail/recgo-engine/strategy/freqfilter/resource"
 	"github.com/uopensail/recgo-engine/strategy/insert"
 	"github.com/uopensail/recgo-engine/strategy/rank"
 	"github.com/uopensail/recgo-engine/strategy/recalls/recall"
-	"github.com/uopensail/recgo-engine/strategy/recalls/resource"
+
 	"github.com/uopensail/recgo-engine/strategy/scatter"
 	"github.com/uopensail/recgo-engine/strategy/weighted"
 	"github.com/uopensail/recgo-engine/userctx"
@@ -25,11 +25,10 @@ const (
 type ModelEntities struct {
 	Model dbmodel.DBTabelModel // 配置引用
 
-	RecallResources resource.Resources
 	FilterResources fresource.Resources
-	PoolSource      poolsource.PoolSource
+	Ress            resources.Resource
 
-	filter.FilterEntities
+	freqfilter.FilterEntities
 	recall.RecallEntities
 	scatter.ScatterEntities
 	insert.InsertEntities

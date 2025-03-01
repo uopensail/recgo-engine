@@ -1,5 +1,13 @@
 package utils
 
+import (
+	"bufio"
+	"os"
+
+	"github.com/uopensail/ulib/zlog"
+	"go.uber.org/zap"
+)
+
 type UpdateTimeComparable interface {
 	GetID() int
 	GetUpdateTime() int64
@@ -40,4 +48,27 @@ func CheckUpsert[T UpdateTimeComparable](oldConfs, newConfs []T) (map[int]bool, 
 		}
 	}
 	return delM, upsertM
+}
+
+func FileReadLine(filePath string, onRow func(line string)) error {
+	//load (key, []string).txt
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		zlog.LOG.Error("failed to open file", zap.Error(err))
+
+		return err
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if onRow != nil {
+			onRow(line)
+		}
+
+	}
+
+	return nil
 }

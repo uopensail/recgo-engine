@@ -1,4 +1,4 @@
-package filter
+package freqfilter
 
 import (
 	"fmt"
@@ -7,7 +7,8 @@ import (
 	"github.com/uopensail/recgo-engine/config"
 	meta "github.com/uopensail/recgo-engine/model/dbmodel"
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
-	"github.com/uopensail/recgo-engine/strategy/filter/resource"
+	"github.com/uopensail/recgo-engine/strategy/freqfilter/resource"
+
 	"github.com/uopensail/recgo-engine/userctx"
 
 	"github.com/uopensail/recgo-engine/utils"

@@ -6,7 +6,8 @@ import (
 	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/recgo-engine/model"
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
-	"github.com/uopensail/recgo-engine/poolsource"
+	"github.com/uopensail/recgo-engine/resources"
+
 	"github.com/uopensail/ulib/pool"
 	"github.com/uopensail/ulib/sample"
 	"github.com/uopensail/ulib/utils"
@@ -21,7 +22,7 @@ func init() {
 type DefaultEntity struct {
 	ref         utils.Reference
 	cfg         table.InsertEntityMeta
-	runtimeCond *poolsource.Condition
+	runtimeCond *resources.Condition
 }
 
 func NewDefaultEntity(cfg table.InsertEntityMeta, env config.EnvConfig, pl *pool.Pool) IStrategyEntity {
@@ -29,7 +30,7 @@ func NewDefaultEntity(cfg table.InsertEntityMeta, env config.EnvConfig, pl *pool
 		cfg: cfg,
 	}
 	if len(cfg.Condition) > 0 {
-		entity.runtimeCond = poolsource.BuildCondition(pl, pl.WholeCollection, "pool", cfg.Condition)
+		entity.runtimeCond = resources.BuildCondition(pl, pl.WholeCollection, "pool", cfg.Condition)
 	}
 	entity.ref.CloseHandler = func() {
 		if entity.runtimeCond != nil {

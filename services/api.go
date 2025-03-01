@@ -21,8 +21,8 @@ func (srv *Services) HomeRecommend(ctx context.Context, in *sunmaoapi.RecRequest
 	modelEntities := strategy.EntitiesMgr.GetModelEntities()
 	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*100)
 	defer cancel()
-	uCtx := userctx.NewUserContext(ctx, in, &modelEntities.Model, modelEntities.PoolSource.Pool,
-		&modelEntities.FilterResources, &modelEntities.RecallResources)
+	uCtx := userctx.NewUserContext(ctx, in, &modelEntities.Ress, &modelEntities.Model,
+		&modelEntities.FilterResources)
 	recResult, err := srv.feedDefaultRec(uCtx, modelEntities)
 	if err != nil {
 		return nil, err
@@ -85,8 +85,8 @@ func (srv *Services) UsrCtxInfoHandler(gCtx *gin.Context) {
 	modelEntities := strategy.EntitiesMgr.GetModelEntities()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 	defer cancel()
-	uCtx := userctx.NewUserContext(ctx, &postData, &modelEntities.Model, modelEntities.PoolSource.Pool,
-		&modelEntities.FilterResources, &modelEntities.RecallResources)
+	uCtx := userctx.NewUserContext(ctx, &postData, &modelEntities.Ress, &modelEntities.Model,
+		&modelEntities.FilterResources)
 
 	uCtxInfo := struct {
 		userctx.UserFeatures

@@ -18,25 +18,9 @@ type InsertEntityMeta struct {
 	Limit     int    `json:"limit" toml:"limit" gorm:"column:limit"`
 }
 
-func (c InsertEntityMeta) GetID() int {
-	return c.ID
-}
-
-func (c InsertEntityMeta) GetUpdateTime() int64 {
-	return c.UpdateTime.Unix()
-}
-
 // 召回组计算实体
 type InsertGroupEntityMeta struct {
 	EntityMeta `json:",inline" toml:",inline" gorm:"embedded"`
 
 	InsertEntities utils.IntSlice `json:"insert_entities" toml:"insert_entities" gorm:"column:insert_entities"` //一份引用
-}
-
-func (c InsertGroupEntityMeta) GetID() int {
-	return c.ID
-}
-
-func (c InsertGroupEntityMeta) GetUpdateTime() int64 {
-	return c.UpdateTime.Unix()
 }

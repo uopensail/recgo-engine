@@ -1,7 +1,6 @@
 package dbmodel
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -44,13 +43,6 @@ func makeRedisRecallResource(id int) table.RecallResourceMeta {
 	}
 }
 
-func makeDSLJson(rawJson string) table.DSLMeta {
-
-	ret := table.DSLMeta{}
-	json.Unmarshal([]byte(rawJson), &ret)
-	return ret
-}
-
 var recallUID int
 
 func makeRecallEntity(name, dsl, paredDSL string) table.RecallEntityMeta {
@@ -62,9 +54,6 @@ func makeRecallEntity(name, dsl, paredDSL string) table.RecallEntityMeta {
 			UpdateTime: time.Now(),
 			PluginName: "default",
 		},
-		DSL: dsl,
-
-		DSLMeta: makeDSLJson(paredDSL),
 	}
 }
 func makeRecallGroupEntity() table.RecallGroupEntityMeta {

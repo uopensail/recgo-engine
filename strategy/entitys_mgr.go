@@ -9,8 +9,6 @@ import (
 	"github.com/uopensail/recgo-engine/model/dbmodel"
 	"go.uber.org/zap"
 
-	"github.com/uopensail/recgo-engine/poolsource"
-
 	"github.com/uopensail/recgo-engine/utils"
 	"github.com/uopensail/ulib/zlog"
 )
@@ -55,33 +53,33 @@ func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) func() {
 	oldEntities := mgr.entities
 
 	entities := &ModelEntities{
-		PoolSource: oldEntities.PoolSource,
+		Ress: oldEntities.Ress,
 	}
 	sourceJobs := make([]func(), 0)
 	var poolUpdate bool
-	if len(tableModel.PoolSourceTableModel.Rows) > 0 {
+	// if len(tableModel.resourceTableModel.Rows) > 0 {
 
-		if entities.PoolSource.CheckUpdateJob(tableModel.PoolSourceTableModel.Rows[0], envCfg) {
-			sourceJobs = append(sourceJobs, func() {
-				ps := poolsource.NewPoolSource(tableModel.PoolSourceTableModel.Rows[0], envCfg)
-				if ps != nil {
-					entities.PoolSource = *ps
+	// 	if entities.ress.CheckUpdateJob(tableModel.resourceTableModel.Rows[0], envCfg) {
+	// 		sourceJobs = append(sourceJobs, func() {
+	// 			ps := resource.Newresource(tableModel.resourceTableModel.Rows[0], envCfg)
+	// 			if ps != nil {
+	// 				entities.ress = *ps
 
-					*(&poolUpdate) = true
-				}
-			})
+	// 				*(&poolUpdate) = true
+	// 			}
+	// 		})
 
-		}
+	// 	}
 
-	}
-	entities.RecallResources.Clone(&oldEntities.RecallResources)
-	job := entities.RecallResources.Reload(envCfg, tableModel.RecallSourceTableModel.Rows, &entities.PoolSource, poolUpdate)
-	if job != nil {
-		sourceJobs = append(sourceJobs, job)
-	}
+	// }
+	// entities.RecallResources.Clone(&oldEntities.RecallResources)
+	// job := entities.RecallResources.Reload(envCfg, tableModel.RecallSourceTableModel.Rows, &entities.ress, poolUpdate)
+	// if job != nil {
+	// 	sourceJobs = append(sourceJobs, job)
+	// }
 
 	entities.FilterResources.Clone(&oldEntities.FilterResources)
-	job = entities.FilterResources.Reload(tableModel.FilterResourceTableModel.Rows, envCfg)
+	job := entities.FilterResources.Reload(tableModel.FilterResourceTableModel.Rows, envCfg)
 	if job != nil {
 		sourceJobs = append(sourceJobs, job)
 	}
@@ -93,9 +91,9 @@ func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) func() {
 
 		entities.RecallEntities.Clone(&oldEntities.RecallEntities)
 		entities.RecallEntities.Reload(tableModel.RecallEntityTableModel.Rows, envCfg,
-			entities.PoolSource.Pool, poolUpdate, &tableModel)
+			entities.Ress.Pool, poolUpdate, &tableModel)
 		entities.InsertEntities.Clone(&oldEntities.InsertEntities)
-		entities.InsertEntities.Reload(tableModel.InsertEntityTableModel.Rows, envCfg, entities.PoolSource.Pool)
+		entities.InsertEntities.Reload(tableModel.InsertEntityTableModel.Rows, envCfg, entities.Ress.Pool)
 
 		entities.ScatterEntities.Clone(&oldEntities.ScatterEntities)
 		entities.ScatterEntities.Reload(tableModel.ScatterEntityTableModel.Rows, envCfg)

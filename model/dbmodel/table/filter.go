@@ -28,13 +28,6 @@ type FilterEntityMeta struct {
 	SourceID int `json:"source_id" toml:"source_id" gorm:"column:source_id"`
 }
 
-func (cfg FilterEntityMeta) GetID() int {
-	return cfg.ID
-}
-func (cfg FilterEntityMeta) GetUpdateTime() int64 {
-	return cfg.UpdateTime.Unix()
-}
-
 type RedisConfigure struct {
 	URL          string            `json:"url" toml:"url"`
 	MinIdleConns int               `json:"min_idle_conns" toml:"min_idle_conns"`
@@ -85,11 +78,4 @@ type FilterGroupEntityMeta struct {
 	Timeout int `json:"timeout" toml:"timeout" gorm:"column:timeout"`
 
 	FilterEntities utils.IntSlice `json:"filter_entities" toml:"filter_entities" gorm:"column:filter_entities"` //一份引用
-}
-
-func (cfg FilterGroupEntityMeta) GetID() int {
-	return cfg.ID
-}
-func (cfg FilterGroupEntityMeta) GetUpdateTime() int64 {
-	return cfg.UpdateTime.Unix()
 }

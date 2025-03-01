@@ -1,9 +1,9 @@
 package recall
 
 import (
+	"github.com/uopensail/recgo-engine/model"
 	"github.com/uopensail/recgo-engine/model/dbmodel"
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
-	"github.com/uopensail/recgo-engine/strategy/filter"
 	"github.com/uopensail/recgo-engine/userctx"
 
 	"github.com/uopensail/ulib/pool"
@@ -16,7 +16,7 @@ func init() {
 }
 
 type IRecallStrategyEntity interface {
-	Do(uCtx *userctx.UserContext, ifilter filter.IFliter) ([]int, error)
+	Do(uCtx *userctx.UserContext, ifilter model.IFliter) ([]int, error)
 	Meta() *table.RecallEntityMeta
 	Close()
 }

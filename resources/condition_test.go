@@ -1,4 +1,4 @@
-package poolsource
+package resources
 
 import (
 	"fmt"

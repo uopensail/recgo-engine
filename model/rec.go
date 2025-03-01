@@ -6,6 +6,10 @@ import (
 	"github.com/uopensail/ulib/sample"
 )
 
+type IFliter interface {
+	Check(id int) bool
+}
+
 type RecallRecord struct {
 	ID    int
 	Score float32

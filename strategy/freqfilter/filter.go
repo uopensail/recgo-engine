@@ -1,4 +1,4 @@
-package filter
+package freqfilter
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
 
-	"github.com/uopensail/recgo-engine/strategy/filter/resource"
+	"github.com/uopensail/recgo-engine/strategy/freqfilter/resource"
 	"github.com/uopensail/ulib/prome"
 	"github.com/uopensail/ulib/sample"
 	"github.com/uopensail/ulib/uno"

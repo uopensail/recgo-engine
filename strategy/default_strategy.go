@@ -4,8 +4,11 @@ import (
 	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/recgo-engine/model"
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
+	"github.com/uopensail/sunmao/strategy/filter"
+	"github.com/uopensail/ulib/zlog"
+	"go.uber.org/zap"
 
-	"github.com/uopensail/recgo-engine/strategy/filter"
+	"github.com/uopensail/recgo-engine/strategy/freqfilter"
 	"github.com/uopensail/recgo-engine/strategy/insert"
 	"github.com/uopensail/recgo-engine/strategy/rank"
 	"github.com/uopensail/recgo-engine/strategy/scatter"
@@ -22,7 +25,8 @@ func init() {
 type DefaultStrategyEntity struct {
 	cfg table.StrategyEntityMeta
 
-	filterEntitys     *filter.FilterEntities
+	FilterGroupEntity *freqfilter.FilterGroupEntity
+
 	RecallGroupEntity *recalls.RecallGroupEntity
 	WeightedEntity    weighted.IStrategyEntity
 	RankEntity        rank.IStrategyEntity
@@ -39,25 +43,29 @@ func (entity *DefaultStrategyEntity) Meta() *table.StrategyEntityMeta {
 	return &entity.cfg
 }
 
-func (entity *DefaultStrategyEntity) Do(uCtx *userctx.UserContext) (model.StageResult, error) {
+type Filters []filter.IFliter
 
-	//召回
-	iFilters := make(map[string]filter.IFliter)
-	for i := 0; i < len(entity.RecallGroupEntity.Entities); i++ {
-		//TODO: Build runtime Filter
-		recallEntity := entity.RecallGroupEntity.Entities[i]
-		recallMeta := recallEntity.Meta()
-		for i := 0; i < len(uCtx.DBTabelModel.FilterGroupEntityTableModel.Rows); i++ {
-			if uCtx.DBTabelModel.FilterGroupEntityTableModel.Rows[i].Name == recallMeta.DSLMeta.Filter {
-				fg := filter.BuildRuntimeEntity(entity.filterEntitys, uCtx.DBTabelModel,
-					uCtx, &uCtx.DBTabelModel.FilterGroupEntityTableModel.Rows[i])
-
-				iFilters[recallMeta.DSLMeta.Filter], _ = fg.Do(uCtx)
-				break
-			}
+func (fiters Filters) Check(id int) bool {
+	for _, filter := range fiters {
+		if filter.Check(id) == false {
+			return false
 		}
 	}
+	return true
+}
+func (entity *DefaultStrategyEntity) Do(uCtx *userctx.UserContext) (model.StageResult, error) {
 
+	//生成过滤器
+
+	iFilters := make(Filters, 0, 2)
+	iFilters = append(iFilters, &uCtx.UserFilter)
+	fg, err := entity.FilterGroupEntity.Do(uCtx)
+	if err != nil {
+		zlog.LOG.Error("FilterGroupEntity.Do", zap.Error(err))
+	} else {
+		iFilters = append(iFilters, fg)
+	}
+	//召回
 	stageRes, _ := entity.RecallGroupEntity.Do(uCtx, iFilters)
 	//排序
 	if entity.RankEntity != nil {
@@ -82,13 +90,13 @@ func (entity *DefaultStrategyEntity) Do(uCtx *userctx.UserContext) (model.StageR
 
 func BuildRuntimeDefaultStrategyEntity(from IStrategyEntity, entities *ModelEntities, uCtx *userctx.UserContext) IStrategyEntity {
 	cloneEntity := DefaultStrategyEntity{
-		cfg:           *from.Meta(),
-		filterEntitys: &entities.FilterEntities,
+		cfg: *from.Meta(),
 	}
 
-	// filterGroupMeta := Entities.Model.FilterGroupEntityTableModel.Get(cloneEntity.cfg.FilterGroupEntityID)
-
-	// cloneEntity.FilterGroupEntity = filter.BuildRuntimeEntity(&Entities.FilterEntities, &Entities.Model, uCtx, filterGroupMeta)
+	filterGroupMeta := entities.Model.FilterGroupEntityTableModel.Get(cloneEntity.cfg.FilterGroupEntityID)
+	fg := freqfilter.BuildRuntimeEntity(&entities.FilterEntities, uCtx.DBTabelModel,
+		uCtx, filterGroupMeta)
+	cloneEntity.FilterGroupEntity = fg
 	insertGroupMeta := entities.Model.InsertGroupEntityTableModel.Get(cloneEntity.cfg.InsertGroupEntityID)
 	var insertRecallIDs []int
 	if insertGroupMeta != nil {

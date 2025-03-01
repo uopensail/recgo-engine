@@ -8,7 +8,6 @@ import (
 	"github.com/uopensail/recgo-engine/model"
 	"github.com/uopensail/recgo-engine/model/dbmodel"
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
-	"github.com/uopensail/recgo-engine/strategy/filter"
 	"github.com/uopensail/recgo-engine/strategy/recalls/recall"
 	"github.com/uopensail/recgo-engine/userctx"
 	"github.com/uopensail/ulib/prome"
@@ -22,7 +21,7 @@ type RecallGroupEntity struct {
 	Entities   []recall.IRecallStrategyEntity
 }
 
-func (entity *RecallGroupEntity) Do(uCtx *userctx.UserContext, ifilters map[string]filter.IFliter) (model.StageResult, error) {
+func (entity *RecallGroupEntity) Do(uCtx *userctx.UserContext, ifilter model.IFliter) (model.StageResult, error) {
 	stat := prome.NewStat("match.Do")
 	defer stat.End()
 
@@ -32,11 +31,7 @@ func (entity *RecallGroupEntity) Do(uCtx *userctx.UserContext, ifilters map[stri
 		matchEntiy := entity.Entities[i]
 
 		go func() {
-			filterName := matchEntiy.Meta().DSLMeta.Filter
-			var ifilter filter.IFliter
-			if v, ok := ifilters[filterName]; ok {
-				ifilter = v
-			}
+
 			ret, err := matchEntiy.Do(uCtx, ifilter)
 			if err != nil {
 				zlog.LOG.Error("match.do", zap.Error(err))
@@ -44,7 +39,7 @@ func (entity *RecallGroupEntity) Do(uCtx *userctx.UserContext, ifilters map[stri
 			itemList := make(model.ItemScoreList, 0, len(ret))
 
 			for k := 0; k < len(ret); k++ {
-				itemSource := uCtx.Pool.GetById(ret[k])
+				itemSource := uCtx.Ress.Pool.GetById(ret[k])
 				if itemSource != nil {
 					itemList = append(itemList, model.ItemRefScore{
 						ItemFeatures: model.ItemFeatures{

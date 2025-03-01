@@ -90,7 +90,7 @@ func LoadDBTabelModel(metaPath string) (DBTabelModel, error) {
 		return DBTabelModel{}, err
 	}
 	dbModel := DBTabelModel{}
-	dbModel.PoolSourceTableModel.Init(tables.Pools)
+	dbModel.resourceTableModel.Init(tables.Pools)
 	dbModel.RecallSourceTableModel.Init(tables.RecallResources)
 	dbModel.ABEntityTableModel.Init(tables.AbMetas)
 	dbModel.RecallEntityTableModel.Init(tables.RecallEntities)
