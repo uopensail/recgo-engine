@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/uopensail/recgo-engine/model/dbmodel"
+	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/resources"
 	fresource "github.com/uopensail/recgo-engine/strategy/freqfilter/resource"
-	"github.com/uopensail/uapi/sunmaoapi"
 	"github.com/uopensail/ulib/pool"
 )
 
@@ -82,12 +82,12 @@ type UserContext struct {
 	UserFeatures
 	UserAB
 	UserFilter
-	ApiRequest *sunmaoapi.RecRequest
+	ApiRequest *recapi.RecRequest
 
 	RelateItem *pool.Features
 }
 
-func NewUserContext(ctx context.Context, apiReq *sunmaoapi.RecRequest,
+func NewUserContext(ctx context.Context, apiReq *recapi.RecRequest,
 	ress *resources.Resource,
 	dbModel *dbmodel.DBTabelModel,
 	fress *fresource.Resources) *UserContext {

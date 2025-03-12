@@ -1,9 +1,9 @@
 package services
 
 import (
+	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/strategy"
 	"github.com/uopensail/recgo-engine/userctx"
-	"github.com/uopensail/uapi/sunmaoapi"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/buffer"
@@ -12,10 +12,10 @@ import (
 	"github.com/uopensail/ulib/zlog"
 )
 
-func (srv *Services) feedDefaultRec(uCtx *userctx.UserContext, modelEntities *strategy.ModelEntities) (*sunmaoapi.RecResult, error) {
+func (srv *Services) feedDefaultRec(uCtx *userctx.UserContext, modelEntities *strategy.ModelEntities) (*recapi.RecResult, error) {
 
 	abCaseV := uCtx.ABData.Get("feed.default.rec")
-	ret := sunmaoapi.RecResult{
+	ret := recapi.RecResult{
 		UserId:   uCtx.ApiRequest.UserId,
 		DeviceId: uCtx.ApiRequest.DeviceId,
 		TraceId:  uCtx.ApiRequest.TraceId,
@@ -68,7 +68,7 @@ func (srv *Services) feedDefaultRec(uCtx *userctx.UserContext, modelEntities *st
 
 }
 
-func reportLogsdk(uCtx *userctx.UserContext, recRes *sunmaoapi.RecResult) {
+func reportLogsdk(uCtx *userctx.UserContext, recRes *recapi.RecResult) {
 	var itemStr buffer.Buffer
 
 	for i := 0; i < len(recRes.Items); i++ {

@@ -15,7 +15,7 @@ import (
 
 type ConditionRecall struct {
 	table.RecallEntityMeta
-	table.ConditionRecallMeta
+
 	*pool.Pool
 	condition *resources.Condition
 }
@@ -27,7 +27,7 @@ func NewConditionRecall(meta table.RecallEntityMeta, pl *pool.Pool, dbModel *dbm
 		Pool:             pl,
 		RecallEntityMeta: meta,
 	}
-	recall.ConditionRecallMeta = meta.ParseConditionRecallMeta()
+
 	//TODO: condition table
 	recall.condition = resources.BuildCondition(pl, pl.WholeCollection, "", recall.Condition)
 	return &recall

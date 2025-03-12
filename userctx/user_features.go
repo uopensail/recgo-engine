@@ -1,7 +1,7 @@
 package userctx
 
 import (
-	"github.com/uopensail/uapi/sunmaoapi"
+	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/ulib/commonconfig"
 	"github.com/uopensail/ulib/sample"
 	"github.com/uopensail/ulib/utils"
@@ -19,7 +19,7 @@ func Init(rdConf commonconfig.RegisterDiscoveryConfig) {
 	fukuGrpcConn, _ = utils.NewKratosGrpcConn(rdConf)
 }
 
-func (uCtx *UserFeatures) initUserTFeature(uid string, apiReq *sunmaoapi.RecRequest) {
+func (uCtx *UserFeatures) initUserTFeature(uid string, apiReq *recapi.RecRequest) {
 	feat := sample.NewMutableFeatures()
 	feat.Set("u_d_click_list", &sample.Strings{Value: []string{"item_id_4589", "item_id_4408"}})
 	uCtx.UFeat = feat

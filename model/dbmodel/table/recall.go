@@ -1,67 +1,11 @@
 package table
 
 import (
-	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"time"
 
 	"github.com/uopensail/recgo-engine/model/utils"
 )
-
-type OrderByMeta struct {
-	Field string `json:"field" toml:"field"`
-	Desc  bool   `json:"desc" toml:"desc"`
-}
-
-type IndexColumnMeta struct {
-	Column         string `json:"column" toml:"column"`
-	FormatExecJson string `json:"format_exec_json" toml:"format_exec_json"`
-}
-
-type IndexMeta struct {
-}
-
-type FromMeta struct {
-	Resource          string `json:"resource" toml:"resource"`
-	KeyFormatExecJson string `json:"key_format_exec_json" toml:"key_format_exec_json"`
-}
-
-type ConditionMeta struct {
-	StaticCondition  string `json:"static_condition" toml:"static_condition"`   //只包含物料特征的
-	RuntimeCondition string `json:"runtime_condition" toml:"runtime_condition"` //需要实时计算的
-	IndexMeta        `json:"index" toml:"index"`
-}
-
-type DSLMeta struct {
-	Name          string `json:"name" toml:"name"`
-	FromMeta      `json:"from" toml:"from"`
-	ConditionMeta `json:"condition" toml:"condition"`
-	OrderByMeta   `json:"orderby" toml:"orderby"`
-
-	Filter string `json:"filter" toml:"filter"`
-	Limit  int    `json:"limit" toml:"limit"`
-}
-
-func (s *DSLMeta) Scan(val interface{}) error {
-	switch val := val.(type) {
-	case string:
-		return json.Unmarshal([]byte(val), s)
-	case []byte:
-		return json.Unmarshal(val, s)
-	default:
-		return errors.New("not support")
-	}
-
-}
-
-func (s DSLMeta) Value() (driver.Value, error) {
-	bytes, err := json.Marshal(s)
-	return string(bytes), err
-}
-func (s DSLMeta) GormDataType() string {
-	return "json"
-}
 
 type InvertInexRecallMeta struct {
 	Resource          string   `json:"resource" toml:"resource"`
@@ -70,12 +14,9 @@ type InvertInexRecallMeta struct {
 	TopK              int      `json:"top_k" toml:"top_k"`
 }
 
-type ConditionRecallMeta struct {
-	Condition string `json:"condition" toml:"condition"`
-}
-
 type RecallEntityMeta struct {
 	EntityMeta `json:",inline" toml:",inline" gorm:"embedded"`
+	Condition  string `json:"condition" toml:"condition"`
 
 	PluginParams XJSON `json:"plugin_params" toml:"plugin_params" gorm:"column:plugin_params"`
 }
@@ -84,12 +25,6 @@ func (c *RecallEntityMeta) ParseInvertInexRecallMeta() InvertInexRecallMeta {
 	invertInexRecallMeta := InvertInexRecallMeta{}
 	json.Unmarshal([]byte(c.PluginParams), invertInexRecallMeta)
 	return invertInexRecallMeta
-}
-
-func (c *RecallEntityMeta) ParseConditionRecallMeta() ConditionRecallMeta {
-	conditionRecallMeta := ConditionRecallMeta{}
-	json.Unmarshal([]byte(c.PluginParams), conditionRecallMeta)
-	return conditionRecallMeta
 }
 
 // 召回组计算实体

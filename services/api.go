@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/uopensail/recgo-engine/model"
+	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/strategy"
 	"github.com/uopensail/recgo-engine/userctx"
 	"github.com/uopensail/uapi/sunmaoapi"
@@ -15,7 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (srv *Services) HomeRecommend(ctx context.Context, in *sunmaoapi.RecRequest) (*sunmaoapi.RecResponse, error) {
+func (srv *Services) Recommend(ctx context.Context, in *recapi.RecRequest) (*recapi.RecResponse, error) {
 	stat := prome.NewStat("HomeRecommend")
 	defer stat.End()
 	modelEntities := strategy.EntitiesMgr.GetModelEntities()
@@ -27,7 +28,7 @@ func (srv *Services) HomeRecommend(ctx context.Context, in *sunmaoapi.RecRequest
 	if err != nil {
 		return nil, err
 	}
-	return &sunmaoapi.RecResponse{
+	return &recapi.RecResponse{
 		Code: 0,
 		Msg:  "OK",
 		Data: recResult,
@@ -74,7 +75,7 @@ func (srv *Services) UsrCtxInfoHandler(gCtx *gin.Context) {
 	pStat := prome.NewStat("UsrCtxInfo")
 	defer pStat.End()
 
-	var postData sunmaoapi.RecRequest
+	var postData recapi.RecRequest
 	if err := gCtx.ShouldBind(&postData); err != nil {
 		gCtx.JSON(http.StatusInternalServerError, model.StatusResponse{
 			Code: -1,

@@ -18,6 +18,7 @@ import (
 type InvertInexRecall struct {
 	table.RecallEntityMeta
 	table.InvertInexRecallMeta
+	condition *resources.Condition
 	*pool.Pool
 }
 
@@ -29,6 +30,8 @@ func NewInvertInexRecall(meta table.RecallEntityMeta, pl *pool.Pool, dbModel *db
 		RecallEntityMeta: meta,
 	}
 	recall.InvertInexRecallMeta = meta.ParseInvertInexRecallMeta()
+	recall.condition = resources.BuildCondition(pl, pl.WholeCollection, "", recall.Condition)
+
 	return &recall
 }
 func (r *InvertInexRecall) Meta() *table.RecallEntityMeta {
@@ -100,6 +103,10 @@ func (r *InvertInexRecall) do(uCtx *userctx.UserContext, filter model.IFliter) [
 		if len(tmpCollection) > topk {
 			return tmpCollection[:topk]
 		}
+	}
+
+	if r.condition != nil {
+		tmpCollection = r.condition.Check("user", uCtx.UFeat, tmpCollection)
 	}
 	return tmpCollection
 }

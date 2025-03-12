@@ -33,16 +33,15 @@ func (tableModel *TableModel[T]) Get(id int) *T {
 }
 
 type DBTabelModel struct {
-	resourceTableModel TableModel[table.PoolMeta] //内容表
-
 	table.ABEntityTableModel //AB 表
-
-	RecallEntityTableModel      TableModel[table.RecallEntityMeta]      //单路召回表
-	RecallGroupEntityTableModel TableModel[table.RecallGroupEntityMeta] //召回组表
 
 	FilterResourceTableModel    TableModel[table.FilterResourceMeta]
 	FilterEntityTableModel      TableModel[table.FilterEntityMeta]
 	FilterGroupEntityTableModel TableModel[table.FilterGroupEntityMeta]
+
+	RecallEntityTableModel      TableModel[table.RecallEntityMeta]      //单路召回表
+	RecallGroupEntityTableModel TableModel[table.RecallGroupEntityMeta] //召回组表
+
 	WeightedEntityTableModel    TableModel[table.WeightedEntityMeta]
 	RankEntityTableModel        TableModel[table.RankEntityMeta]
 	InsertEntityTableModel      TableModel[table.InsertEntityMeta]
