@@ -10,7 +10,7 @@ import (
 	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/strategy"
 	"github.com/uopensail/recgo-engine/userctx"
-	"github.com/uopensail/uapi/sunmaoapi"
+
 	"github.com/uopensail/ulib/prome"
 
 	"github.com/gin-gonic/gin"
@@ -48,7 +48,7 @@ func (srv *Services) RecommendHandler(gCtx *gin.Context) {
 	pStat := prome.NewStat("RecommendHandler")
 	defer pStat.End()
 
-	var postData sunmaoapi.RecRequest
+	var postData recapi.RecRequest
 	if err := gCtx.ShouldBind(&postData); err != nil {
 		gCtx.JSON(http.StatusInternalServerError, model.StatusResponse{
 			Code: -1,
@@ -57,7 +57,7 @@ func (srv *Services) RecommendHandler(gCtx *gin.Context) {
 		return
 	}
 
-	ret, err := srv.HomeRecommend(context.Background(), &postData)
+	ret, err := srv.Recommend(context.Background(), &postData)
 	if err != nil {
 		gCtx.JSON(http.StatusInternalServerError, model.StatusResponse{
 			Code: -1,

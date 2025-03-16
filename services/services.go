@@ -6,9 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-kratos/kratos/v2/registry"
 	"github.com/uopensail/recgo-engine/config"
+	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/strategy"
 	"github.com/uopensail/recgo-engine/utils"
-	"github.com/uopensail/uapi/sunmaoapi"
 	etcdclient "go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -22,7 +22,7 @@ const (
 )
 
 type Services struct {
-	sunmaoapi.UnimplementedRecServiceServer
+	recapi.UnimplementedRecServiceServer
 	etcdCli *etcdclient.Client
 
 	instance registry.ServiceInstance
@@ -40,7 +40,7 @@ func (srv *Services) Init(configFolder string, etcdName string, etcdCli *etcdcli
 
 }
 func (srv *Services) RegisterGrpc(grpcS *grpc.Server) {
-	sunmaoapi.RegisterRecServiceServer(grpcS, srv)
+	recapi.RegisterRecServiceServer(grpcS, srv)
 	//grpc_health_v1.RegisterHealthServer(grpcS, srv)
 }
 
