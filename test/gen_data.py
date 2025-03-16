@@ -66,15 +66,25 @@ class InvertIndex:
         self.itemdf = itemdf
         invert_index = {}
         for field_name in fileds_list:
-            if (field_name is str):
+            filed_invert_index = {}
+            if (type(field_name) is str):
+                file_name_key = field_name
                 ret = invert_index_with_items(
                     itemdf, [field_name], schema)
-                print(ret)
-            elif (field_name is list):
+                for key_t,v in ret.items():
+                    key = ','.join(str(x) for x in key_t)
+                    filed_invert_index[key] = v
+            elif (type(field_name) is list):
+                file_name_key = '|'.join(str(x) for x in field_name)
                 ret = invert_index_with_items(
                     itemdf, field_name, schema)
-                print(ret)
-                pass
+                for key_t,v in ret.items():
+                    key = ','.join(str(x) for x in key_t)
+                    filed_invert_index[key] = v
+            else:
+                raise "not suppport"
+            invert_index[file_name_key] = filed_invert_index
+            
 
 def invert_index_with_items(dataframe: pd.DataFrame, 
                            field_name_list: list, 
@@ -121,7 +131,7 @@ def invert_index_with_items(dataframe: pd.DataFrame,
         
         if indices:
             # 获取完整数据项并转换为字典列表
-            items = dataframe.loc[indices].to_dict('records')
+            items = dataframe.loc[list(indices)].to_dict('records')
             # 过滤多值字段的无效组合
             filtered = [
                 item for item in items
@@ -172,6 +182,7 @@ class Pool:
     def gen_subpool(self, conditons):
         # 转换为 DataFrame
         ret = {}
+        self.itemdf["d_s_cat2"] = self.itemdf["d_s_cat2"].apply(lambda x: ",".join(x) if isinstance(x, list) else x)
         for condition in conditons:
             sql = "SELECT * FROM itemdf WHERE " + condition
 
