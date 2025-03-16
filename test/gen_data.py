@@ -46,10 +46,10 @@ def write_arrayobj_file(path, items):
             line = json.dumps(item)
             fd.write(f"{line}\n")
             i += 1
-def write_dict_file(path, itemdict):
+def write_dict_str_file(path, itemdict):
     with open(path, 'w') as fd:
         for k,item in itemdict.items():
-            line = json.dumps(item)
+            line = item
             fd.write(f"{k}\t{line}\n")
 
 class Pool:
@@ -62,12 +62,12 @@ class Pool:
         subpool_filedata = {}
         subpoolid =0
         for k,v in subpool.items():
-            subpool_filedata[subpoolid] = ",".join(v)
+            subpool_filedata[subpoolid] = ",".join(str(x) for x in v)
             subpoolid +=1
 
         write_arrayobj_file(dir + "/pool.txt", self.items)
         write_json_file(dir + "/pool.meta",  meta)
-        write_dict_file(dir + "/subpool.txt", subpool_filedata)
+        write_dict_str_file(dir + "/subpool.txt", subpool_filedata)
         pass
         
 
@@ -76,20 +76,22 @@ class Pool:
         ret = []
         for subitem in subitems:
             for i in range(len(items)):
-                if items[i] is None and subitem["id"] == items[i]["id"]:
-                    ret.append(i)
+                
+                if subitem['id'] == items[i]['id']['value']:
+                    #print("xxx",subitem, items[i])
+                    ret.append(subitem['id'])
                     break
         return ret
+    
     def gen_subpool(self,conditons):
           # 转换为 DataFrame
-      
- 
         ret = {}
         for condition in conditons:
-            sql = "SELECT * FROM itemdf WHERE " + condition
+            sql = "SELECT id FROM itemdf WHERE " + condition
            
-            sqldf(sql, {"itemdf": itemdf})
-            subitems = result
+            result = sqldf(sql, {"itemdf": self.itemdf})
+            
+            subitems = result.to_dict(orient="records")
             ret[condition] = Pool.build_sub_collection(self.items, subitems)
         return ret
  
@@ -109,6 +111,7 @@ class Pool:
             dfdata.append(item)  
         df = pd.DataFrame(dfdata)
         print(df)
+        self.itemdf = df
         return ret
 
  
