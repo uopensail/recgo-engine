@@ -1,6 +1,8 @@
 package services
 
 import (
+	"context"
+
 	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/strategy"
 	"github.com/uopensail/recgo-engine/userctx"
@@ -12,8 +14,10 @@ import (
 	"github.com/uopensail/ulib/zlog"
 )
 
-func (srv *Services) feedDefaultRec(uCtx *userctx.UserContext, modelEntities *strategy.ModelEntities) (*recapi.RecResult, error) {
-
+func (srv *Services) feedDefaultRec(ctx context.Context, in *recapi.RecRequest, entities *strategy.ModelEntities) (*recapi.RecResult, error) {
+	abInfo := userctx.FetchABInfo(userctx.UID(in))
+	uCtx := userctx.NewUserContext(ctx, in, abInfo, &entities.Ress, &entities.Model,
+		&entities.FilterResources)
 	abCaseV := uCtx.ABData.Get("feed.default.rec")
 	ret := recapi.RecResult{
 		UserId:   uCtx.ApiRequest.UserId,
@@ -40,10 +44,11 @@ func (srv *Services) feedDefaultRec(uCtx *userctx.UserContext, modelEntities *st
 	}
 
 	//do strategy
-	istrategy := modelEntities.StrategyEntities.GetStrategy(int(HomeRecommendStrategyEntryID))
-
+	istrategy := entities.StrategyEntities.GetStrategy(int(HomeRecommendStrategyEntryID))
 	if istrategy != nil {
-		istrategy = strategy.BuildRuntimeEntity(modelEntities, uCtx, istrategy.Meta())
+		uCtx.InitUserFilter(istrategy.Meta().SubPoolID)
+
+		istrategy = strategy.BuildRuntimeEntity(entities, uCtx, istrategy.Meta())
 		recRes, err := istrategy.Do(uCtx)
 		if err != nil {
 			zlog.LOG.Error("strategy.do", zap.Error(err))

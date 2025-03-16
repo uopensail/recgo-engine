@@ -22,9 +22,8 @@ func (srv *Services) Recommend(ctx context.Context, in *recapi.RecRequest) (*rec
 	entities := strategy.EntitiesMgr.GetEntities()
 	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*100)
 	defer cancel()
-	uCtx := userctx.NewUserContext(ctx, in, &entities.Ress, &entities.Model,
-		&entities.FilterResources)
-	recResult, err := srv.feedDefaultRec(uCtx, entities.ModelEntities)
+
+	recResult, err := srv.feedDefaultRec(ctx, in, entities.ModelEntities)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +85,8 @@ func (srv *Services) UsrCtxInfoHandler(gCtx *gin.Context) {
 	entities := strategy.EntitiesMgr.GetEntities()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 	defer cancel()
-	uCtx := userctx.NewUserContext(ctx, &postData, &entities.Ress, &entities.Model,
+	abInfo := userctx.FetchABInfo(userctx.UID(&postData))
+	uCtx := userctx.NewUserContext(ctx, &postData, abInfo, &entities.Ress, &entities.Model,
 		&entities.FilterResources)
 
 	uCtxInfo := struct {

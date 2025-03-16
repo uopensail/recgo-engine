@@ -23,7 +23,7 @@ type RecallEntityMeta struct {
 
 func (c *RecallEntityMeta) ParseInvertInexRecallMeta() InvertInexRecallMeta {
 	invertInexRecallMeta := InvertInexRecallMeta{}
-	json.Unmarshal([]byte(c.PluginParams), invertInexRecallMeta)
+	json.Unmarshal([]byte(c.PluginParams), &invertInexRecallMeta)
 	return invertInexRecallMeta
 }
 

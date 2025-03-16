@@ -3,6 +3,7 @@ package userctx
 import (
 	"context"
 
+	"github.com/uopensail/kongming-sdk-go/sdkcore"
 	"github.com/uopensail/recgo-engine/model/dbmodel"
 	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/resources"
@@ -88,6 +89,7 @@ type UserContext struct {
 }
 
 func NewUserContext(ctx context.Context, apiReq *recapi.RecRequest,
+	abInfo *sdkcore.ABData,
 	ress *resources.Resource,
 	dbModel *dbmodel.DBTabelModel,
 	fress *fresource.Resources) *UserContext {
@@ -98,27 +100,45 @@ func NewUserContext(ctx context.Context, apiReq *recapi.RecRequest,
 		Ress:         ress,
 		FilterRess:   fress,
 	}
-
+	if abInfo != nil {
+		uCtx.UserAB.ABData = *abInfo
+	}
+	//初始化用户特征
+	uCtx.UserFeatures.initUserTFeature(uCtx.UID(), apiReq)
 	//tran
-	var excludeList resources.Collection
+
 	if uCtx.ApiRequest != nil {
-		excludeList = make(resources.Collection, len(uCtx.ApiRequest.ExcludeItems))
-		for i := 0; i < len(uCtx.ApiRequest.ExcludeItems); i++ {
-			item := ress.Pool.GetByKey(uCtx.ApiRequest.ExcludeItems[i])
-			excludeList = append(excludeList, item.ID)
-		}
 		uCtx.RelateItem = ress.Pool.GetByKey(uCtx.ApiRequest.RelateItem)
 	}
 
-	//初始化ab信息
-	uCtx.UserAB.initAB(uCtx.UID())
-	//初始化用户特征
-	uCtx.UserFeatures.initUserTFeature(uCtx.UID(), apiReq)
-
-	//查看命中的物料子集
-	//TODO: 根据Pipeline 配置子集, 根据api conditon
-	uCtx.UserFilter = *newUserFilter(excludeList, nil, ress, apiReq.FilterCondition)
 	return &uCtx
+}
+
+func (uCtx *UserContext) InitUserFilter(subPoolID int) {
+	var excludeList resources.Collection
+
+	if uCtx.ApiRequest != nil {
+		excludeList = make(resources.Collection, len(uCtx.ApiRequest.ExcludeItems))
+		for i := 0; i < len(uCtx.ApiRequest.ExcludeItems); i++ {
+			item := uCtx.Ress.Pool.GetByKey(uCtx.ApiRequest.ExcludeItems[i])
+			excludeList = append(excludeList, item.ID)
+		}
+	}
+	var subPool *SubPool
+	subCollection, ok := uCtx.Ress.SubPoolCollectionRess.SubPool[subPoolID]
+	if ok {
+		subPool = &SubPool{
+			collection: subCollection,
+		}
+	}
+	uCtx.UserFilter = *newUserFilter(excludeList, subPool, uCtx.Ress, uCtx.ApiRequest.FilterCondition)
+
+}
+func UID(apiReq *recapi.RecRequest) string {
+	if len(apiReq.UserId) > 0 {
+		return apiReq.UserId
+	}
+	return apiReq.DeviceId
 }
 
 func (uCtx *UserContext) UID() string {

@@ -149,7 +149,7 @@ func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) (func(), error) 
 
 		entities.RankEntities = *rank.NewRankEntities(tableModel.RankEntityTableModel.Rows, envCfg)
 		entities.WeightedEntities = *weighted.NewWeightedEntities(tableModel.WeightedEntityTableModel.Rows, envCfg)
-
+		entities.StrategyEntities = *NewStrategyEntities(tableModel.StrategyEntityTableModel.Rows, envCfg)
 		entities.Model = tableModel
 		atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&mgr.entities)), unsafe.Pointer(entities))
 	}

@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/uopensail/recgo-engine/config"
@@ -36,6 +37,7 @@ func NewSubPoolCollectionResource(envCfg config.EnvConfig, location string, pl *
 			item := pl.GetByKey(v)
 			vv = append(vv, item.ID)
 		}
+		sort.Ints(vv)
 		subPoolCollection[key] = vv
 	})
 	fs.SubPool = subPoolCollection

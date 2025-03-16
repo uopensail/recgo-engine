@@ -10,12 +10,13 @@ type UserAB struct {
 	sdkcore.ABData
 }
 
-func (uCtx *UserAB) initAB(id string) {
+func FetchABInfo(id string) *sdkcore.ABData {
 	//TODO: Support  GrowthBook
 	abInfo := sdkcore.ABSDK.Get(id, nil)
 	if abInfo != nil {
-		uCtx.ABData = *abInfo
+		return abInfo
 	} else {
 		zlog.LOG.Error("GetABData nil")
+		return nil
 	}
 }

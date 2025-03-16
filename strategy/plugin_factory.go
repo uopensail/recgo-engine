@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
-	"github.com/uopensail/recgo-engine/utils"
 
 	"github.com/uopensail/recgo-engine/config"
 
@@ -42,50 +41,28 @@ type StrategyEntities struct {
 	Entities map[int]IStrategyEntity
 }
 
-func (Entities *StrategyEntities) Clone(a *StrategyEntities) {
-	Entities.Entities = make(map[int]IStrategyEntity)
-	if a != nil {
-		for k, v := range a.Entities {
-			Entities.Entities[k] = v
+func NewStrategyEntities(newConfs []table.StrategyEntityMeta, envCfg config.EnvConfig) *StrategyEntities {
+	entities := &StrategyEntities{
+		Entities: make(map[int]IStrategyEntity),
+	}
+
+	for k, v := range newConfs {
+		s := PluginFactoryCreate(v, envCfg)
+		if s != nil {
+			entities.Entities[k] = s
 		}
 	}
+	return entities
 }
 
-func (Entities *StrategyEntities) GetStrategy(id int) IStrategyEntity {
+func (entities *StrategyEntities) GetStrategy(id int) IStrategyEntity {
 	stat := prome.NewStat(fmt.Sprintf("match.GetStrategy.%d", id))
 	defer stat.End()
 
-	if entity, ok := Entities.Entities[id]; ok {
+	if entity, ok := entities.Entities[id]; ok {
 		return entity
 	}
 	stat.MarkErr()
 	return nil
-
-}
-
-func (Entities *StrategyEntities) Reload(newConfs []table.StrategyEntityMeta, envCfg config.EnvConfig) {
-	oldConfs := make([]table.StrategyEntityMeta, 0, len(Entities.Entities))
-	for _, v := range Entities.Entities {
-		cfg := v.Meta()
-		oldConfs = append(oldConfs, *cfg)
-	}
-
-	invalidM, upsertM := utils.CheckUpsert(oldConfs, newConfs)
-
-	if len(invalidM)+len(upsertM) <= 0 {
-		return
-	}
-
-	for k, v := range upsertM {
-		s := PluginFactoryCreate(v, envCfg)
-		if s != nil {
-			Entities.Entities[k] = s
-		}
-	}
-
-	//删除
-	for k := range invalidM {
-		delete(Entities.Entities, k)
-	}
 
 }

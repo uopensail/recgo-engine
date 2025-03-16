@@ -13,6 +13,7 @@ import (
 
 func init() {
 	RegisterPlugin("invert_index", NewInvertInexRecall)
+	RegisterPlugin("condition", NewConditionRecall)
 }
 
 type IRecallStrategyEntity interface {

@@ -1,8 +1,8 @@
 package table
 
 type StrategyEntityMeta struct {
-	EntityMeta `json:",inline" toml:",inline" gorm:"embedded"`
-
+	EntityMeta          `json:",inline" toml:",inline" gorm:"embedded"`
+	SubPoolID           int `json:"sub_pool_id" toml:"sub_pool_id" gorm:"column:sub_pool_id"`
 	FilterGroupEntityID int `json:"filter_group_entity_id" toml:"filter_group_entity_id" gorm:"column:filter_group_entity_id"`
 	RecallGroupEntityID int `json:"recall_group_entity_id" toml:"recall_group_entity_id" gorm:"column:recall_group_entity_id"`
 	RankEntityID        int `json:"rank_entity_id" toml:"rank_entity_id" gorm:"column:rank_entity_id"`
