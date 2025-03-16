@@ -11,7 +11,6 @@ import (
 
 	"github.com/uopensail/recgo-engine/userctx"
 
-	"github.com/uopensail/recgo-engine/utils"
 	"github.com/uopensail/ulib/prome"
 )
 
@@ -24,13 +23,17 @@ type FilterEntities struct {
 	Entities map[int]IFilterStrategyEntity
 }
 
-func (entities *FilterEntities) Clone(a *FilterEntities) {
-	entities.Entities = make(map[int]IFilterStrategyEntity)
-	if a != nil {
-		for k, v := range a.Entities {
-			entities.Entities[k] = v
+func NewFilterEntities(newConfs []table.FilterEntityMeta, envCfg config.EnvConfig) *FilterEntities {
+	entities := FilterEntities{
+		Entities: make(map[int]IFilterStrategyEntity, len(newConfs)),
+	}
+	for k, v := range newConfs {
+		s := NewFilterEntity(v)
+		if s != nil {
+			entities.Entities[k] = s
 		}
 	}
+	return &entities
 }
 
 func (entities *FilterEntities) GetStrategy(id int) IFilterStrategyEntity {
@@ -43,42 +46,6 @@ func (entities *FilterEntities) GetStrategy(id int) IFilterStrategyEntity {
 	stat.MarkErr()
 	return nil
 }
-
-func (entities *FilterEntities) Reload(newConfs []table.FilterEntityMeta, envCfg config.EnvConfig) {
-	oldConfs := make([]table.FilterEntityMeta, 0, len(entities.Entities))
-	for _, v := range entities.Entities {
-		cfg := v.Meta()
-		oldConfs = append(oldConfs, *cfg)
-	}
-
-	invalidM, upsertM := utils.CheckUpsert(oldConfs, newConfs)
-
-	if len(invalidM)+len(upsertM) <= 0 {
-		return
-	}
-
-	for k, v := range upsertM {
-		s := NewFilterEntity(v)
-		if s != nil {
-			// close old
-			if old, ok := entities.Entities[k]; ok {
-				old.Close()
-			}
-			entities.Entities[k] = s
-		}
-	}
-
-	//删除
-	for k := range invalidM {
-		// close old
-		if old, ok := entities.Entities[k]; ok {
-			old.Close()
-		}
-		delete(entities.Entities, k)
-	}
-
-}
-
 func BuildFilterEntity(entities *FilterEntities, dbModel *meta.DBTabelModel,
 	uCtx *userctx.UserContext, entityMeta *table.FilterEntityMeta) IFilterStrategyEntity {
 	if entityMeta == nil {

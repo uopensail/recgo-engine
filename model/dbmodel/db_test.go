@@ -9,14 +9,7 @@ import (
 )
 
 func makeDefaultPool() table.PoolMeta {
-	return table.PoolMeta{
-		ID:           1,
-		Name:         "default",
-		Location:     "/tmp/sunmao/pool.json",
-		PrimaryField: "d_s_id",
-
-		UpdateTime: time.Now(),
-	}
+	return table.PoolMeta{}
 }
 
 func makeFileRecallResource(id int, name, path string) table.RecallResourceMeta {

@@ -7,10 +7,9 @@ import (
 	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/recgo-engine/model/dbmodel"
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
+	"github.com/uopensail/recgo-engine/resources"
 
 	"github.com/uopensail/recgo-engine/userctx"
-	"github.com/uopensail/recgo-engine/utils"
-	"github.com/uopensail/ulib/pool"
 	"github.com/uopensail/ulib/prome"
 )
 
@@ -18,13 +17,18 @@ type RecallEntities struct {
 	Entities map[int]IRecallStrategyEntity
 }
 
-func (entities *RecallEntities) Clone(a *RecallEntities) {
-	entities.Entities = make(map[int]IRecallStrategyEntity)
-	if a != nil {
-		for k, v := range a.Entities {
-			entities.Entities[k] = v
+func NewRecallEntities(newConfs []table.RecallEntityMeta, envCfg config.EnvConfig,
+	ress *resources.Resource, dbModel *dbmodel.DBTabelModel) *RecallEntities {
+	entities := RecallEntities{
+		Entities: make(map[int]IRecallStrategyEntity),
+	}
+	for k, v := range newConfs {
+		s := PluginFactoryCreate(v, ress, dbModel)
+		if s != nil {
+			entities.Entities[k] = s
 		}
 	}
+	return &entities
 }
 
 func (entities *RecallEntities) GetStrategy(id int) IRecallStrategyEntity {
@@ -36,45 +40,6 @@ func (entities *RecallEntities) GetStrategy(id int) IRecallStrategyEntity {
 	}
 	stat.MarkErr()
 	return nil
-
-}
-
-func (entities *RecallEntities) Reload(newConfs []table.RecallEntityMeta, envCfg config.EnvConfig,
-	pl *pool.Pool, poolUpdate bool, dbModel *dbmodel.DBTabelModel) {
-	oldConfs := make([]table.RecallEntityMeta, 0, len(entities.Entities))
-	for _, v := range entities.Entities {
-		cfg := v.Meta()
-		oldConfs = append(oldConfs, *cfg)
-	}
-
-	invalidM, upsertM := utils.CheckUpsert(oldConfs, newConfs)
-	if poolUpdate {
-		//update all
-		for _, v := range newConfs {
-			upsertM[v.ID] = v
-		}
-	}
-	if len(invalidM)+len(upsertM) <= 0 {
-		return
-	}
-
-	for k, v := range upsertM {
-		s := PluginFactoryCreate(v, pl, dbModel)
-		if s != nil {
-			if old, ok := entities.Entities[k]; ok {
-				old.Close()
-			}
-			entities.Entities[k] = s
-		}
-	}
-
-	//删除
-	for k := range invalidM {
-		if old, ok := entities.Entities[k]; ok {
-			old.Close()
-		}
-		delete(entities.Entities, k)
-	}
 
 }
 

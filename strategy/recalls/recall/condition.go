@@ -20,16 +20,15 @@ type ConditionRecall struct {
 	condition *resources.Condition
 }
 
-func NewConditionRecall(meta table.RecallEntityMeta, pl *pool.Pool, dbModel *dbmodel.DBTabelModel) IRecallStrategyEntity {
+func NewConditionRecall(meta table.RecallEntityMeta, ress *resources.Resource, dbModel *dbmodel.DBTabelModel) IRecallStrategyEntity {
 	//
 
 	recall := ConditionRecall{
-		Pool:             pl,
+		Pool:             ress.Pool,
 		RecallEntityMeta: meta,
 	}
 
-	//TODO: condition table
-	recall.condition = resources.BuildCondition(pl, pl.WholeCollection, "", recall.Condition)
+	recall.condition = resources.BuildCondition(ress, ress.Pool.WholeCollection, recall.Condition)
 	return &recall
 }
 func (r *ConditionRecall) Meta() *table.RecallEntityMeta {
@@ -48,7 +47,7 @@ func (r *ConditionRecall) do(userFeats sample.Features, pl *pool.Pool, filter mo
 	var tmpCollection []int
 	// filter runtime condition
 	if r.condition != nil {
-		tmpCollection = r.condition.Check("user", userFeats, tmpCollection)
+		tmpCollection = r.condition.Check(userFeats, tmpCollection)
 	}
 	k := 0
 	for _, v := range tmpCollection {

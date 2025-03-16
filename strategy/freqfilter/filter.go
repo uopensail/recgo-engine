@@ -29,7 +29,12 @@ func NewFilterEntity(cfg table.FilterEntityMeta) *FilterEntity {
 	var evaluator *uno.Evaluator
 	if len(cfg.Condition) > 0 {
 		var err error
-		evaluator, err = uno.NewEvaluator(cfg.Condition)
+		evaluator, err = uno.NewEvaluator(cfg.Condition, map[string]sample.DataType{
+			"id":     sample.StringType,
+			"ts":     sample.Int64Type,
+			"scene":  sample.StringType,
+			"action": sample.StringType,
+		})
 		if err != nil {
 			stat.MarkErr()
 			zlog.LOG.Error("condition parse error", zap.Error(err))
@@ -101,7 +106,7 @@ func (r *FilterEntity) Do(useId string, ress *resource.Resources) []string {
 		for i := 0; i < len(feas); i++ {
 			tmp := make([]unsafe.Pointer, len(slice))
 			copy(tmp, slice)
-			r.evaluator.Fill("", feas[i], tmp)
+			r.evaluator.Fill(feas[i], tmp)
 			slices[i] = tmp
 		}
 		evalStatus = r.evaluator.BatchEval(slices)

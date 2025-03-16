@@ -6,7 +6,7 @@ import (
 
 	"github.com/uopensail/recgo-engine/config"
 	xutils "github.com/uopensail/recgo-engine/utils"
-	"github.com/uopensail/ulib/finder"
+	"github.com/uopensail/ulib/pool"
 	"github.com/uopensail/ulib/utils"
 	"github.com/uopensail/ulib/zlog"
 
@@ -39,7 +39,7 @@ type InvertIndexFileResource struct {
 	*fileIndeces
 }
 
-func NewInvertIndexFileResource(envCfg config.EnvConfig, location string) (*InvertIndexFileResource, error) {
+func NewInvertIndexFileResource(envCfg config.EnvConfig, location string, pl *pool.Pool) (*InvertIndexFileResource, error) {
 
 	fs := &InvertIndexFileResource{
 		location: location,
@@ -57,7 +57,13 @@ func NewInvertIndexFileResource(envCfg config.EnvConfig, location string) (*Inve
 		}
 
 		key := vvs[0]
-		vv := utils.String2IntList(vvs[1], ",")
+		vvStr := utils.StringSplit(vvs[1], ",")
+		vv := make([]int, 0, len(vvStr))
+		for _, v := range vvStr {
+			item := pl.GetByKey(v)
+			vv = append(vv, item.ID)
+		}
+
 		indeces.indexes[key] = NewOrderCollection(vv)
 	})
 	fs.fileIndeces = &indeces
@@ -77,18 +83,6 @@ func (res *InvertIndexFileResource) Get(keys []string) []Collection {
 		copy(ret[i], v.Collection)
 	}
 	return ret
-}
-
-func (res *InvertIndexFileResource) CheckResourceUpdate(envCfg config.EnvConfig, poolUpdate bool) bool {
-	if poolUpdate {
-		return true
-	}
-	myFinder := finder.GetFinder(&envCfg.Finder)
-	nUpdateTime := myFinder.GetUpdateTime(res.location)
-	if res.updateTime < nUpdateTime {
-		return true
-	}
-	return false
 }
 
 func (res *InvertIndexFileResource) Close() {

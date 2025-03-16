@@ -1,34 +1,60 @@
 package strategy
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"time"
 	"unsafe"
 
 	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/recgo-engine/model/dbmodel"
+	"github.com/uopensail/recgo-engine/resources"
+	"github.com/uopensail/recgo-engine/strategy/freqfilter"
+	"github.com/uopensail/recgo-engine/strategy/insert"
+	"github.com/uopensail/recgo-engine/strategy/rank"
+	"github.com/uopensail/recgo-engine/strategy/recalls/recall"
+	"github.com/uopensail/recgo-engine/strategy/scatter"
+	"github.com/uopensail/recgo-engine/strategy/weighted"
 	"go.uber.org/zap"
 
 	"github.com/uopensail/recgo-engine/utils"
+	"github.com/uopensail/ulib/finder"
+	"github.com/uopensail/ulib/targz"
 	"github.com/uopensail/ulib/zlog"
 )
 
+type Entities struct {
+	*ModelEntities
+	UpdateTime int64
+}
+
+func (c Entities) GetUpdateTime() int64 {
+	return c.UpdateTime
+}
+
 type EntitiesManager struct {
-	entities *ModelEntities
+	entities *Entities
 }
 
 func (mgr *EntitiesManager) Init(envCfg config.EnvConfig, jobUtil *utils.MetuxJobUtil) {
-	mgr.entities = &ModelEntities{}
+	mgr.entities = &Entities{}
 
 	mgr.cronJob(envCfg, jobUtil)
 }
-func (mgr *EntitiesManager) GetModelEntities() *ModelEntities {
-	entities := (*ModelEntities)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&mgr.entities))))
+func (mgr *EntitiesManager) GetEntities() *Entities {
+	entities := (*Entities)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&mgr.entities))))
 	return entities
 }
 
 func (mgr *EntitiesManager) cronJob(envCfg config.EnvConfig, jobUtil *utils.MetuxJobUtil) {
-	job := mgr.loadAllJob(envCfg)
+	job, err := mgr.loadAllJob(envCfg)
+	if err != nil {
+		zlog.LOG.Error("loadAllJob", zap.Error(err))
+		panic(err)
+
+	}
 	job()
 	go func() {
 
@@ -36,48 +62,73 @@ func (mgr *EntitiesManager) cronJob(envCfg config.EnvConfig, jobUtil *utils.Metu
 		defer ticker.Stop()
 		for {
 			<-ticker.C
-			job := mgr.loadAllJob(envCfg)
+			job, err := mgr.loadAllJob(envCfg)
+			if err != nil {
+				zlog.LOG.Error("loadAllJob", zap.Error(err))
+				continue
+			}
 			jobUtil.TryRun(job)
 		}
 	}()
 
 }
 
-// Do not modify the execution order
-func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) func() {
-	tableModel, err := dbmodel.LoadDBTabelModel(config.AppConfigInstance.URL)
-	if err != nil {
-		zlog.LOG.Error("LoadDBTabelModel", zap.Error(err))
-		return nil
+func getFile(envCfg config.EnvConfig, location string) string {
+	if strings.HasPrefix(location, "oss://") || strings.HasPrefix(location, "s3://") {
+		baseName := filepath.Base(location)
+
+		localPath := filepath.Join(envCfg.WorkDir, "tmp", baseName)
+		myFinder := finder.GetFinder(&envCfg.Finder)
+		myFinder.Download(location, localPath)
+		return localPath
+	} else {
+		return location
 	}
+
+}
+
+// Do not modify the execution order
+func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) (func(), error) {
+
 	oldEntities := mgr.entities
 
-	entities := &ModelEntities{
-		Ress: oldEntities.Ress,
+	finder := finder.GetFinder(&envCfg.Finder)
+	remoteFileUpdateTime := finder.GetUpdateTime(config.AppConfigInstance.URL)
+	if oldEntities.UpdateTime != 0 && remoteFileUpdateTime == oldEntities.UpdateTime {
+		zlog.LOG.Info("no need to update ingore")
+		return nil, nil
 	}
+	locationTarFile := getFile(envCfg, config.AppConfigInstance.URL)
+	// 清理旧的
+	os.RemoveAll(filepath.Join(envCfg.WorkDir, "ws"))
+
+	// unzip
+	err := targz.Extract(locationTarFile, filepath.Join(envCfg.WorkDir, "ws"))
+	if err != nil {
+		zlog.LOG.Error("targz.Extract", zap.Error(err))
+		return nil, err
+	}
+	tableModel, err := dbmodel.LoadDBTabelModel(filepath.Join(envCfg.WorkDir, "ws/dbmodel.toml"))
+
+	if err != nil {
+		zlog.LOG.Error("LoadDBTabelModel", zap.Error(err))
+		return nil, err
+	}
+
 	sourceJobs := make([]func(), 0)
-	var poolUpdate bool
-	// if len(tableModel.resourceTableModel.Rows) > 0 {
 
-	// 	if entities.ress.CheckUpdateJob(tableModel.resourceTableModel.Rows[0], envCfg) {
-	// 		sourceJobs = append(sourceJobs, func() {
-	// 			ps := resource.Newresource(tableModel.resourceTableModel.Rows[0], envCfg)
-	// 			if ps != nil {
-	// 				entities.ress = *ps
+	//TODO 优化Resource 变化了才更新
+	ress, err := resources.NewResource(envCfg, filepath.Join(envCfg.WorkDir, "ws/resources"))
+	if err != nil {
+		zlog.LOG.Error("NewResource", zap.Error(err))
+		return nil, err
+	}
+	entities := &Entities{
 
-	// 				*(&poolUpdate) = true
-	// 			}
-	// 		})
-
-	// 	}
-
-	// }
-	// entities.RecallResources.Clone(&oldEntities.RecallResources)
-	// job := entities.RecallResources.Reload(envCfg, tableModel.RecallSourceTableModel.Rows, &entities.ress, poolUpdate)
-	// if job != nil {
-	// 	sourceJobs = append(sourceJobs, job)
-	// }
-
+		ModelEntities: &ModelEntities{
+			Ress: *ress,
+		},
+	}
 	entities.FilterResources.Clone(&oldEntities.FilterResources)
 	job := entities.FilterResources.Reload(tableModel.FilterResourceTableModel.Rows, envCfg)
 	if job != nil {
@@ -86,26 +137,19 @@ func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) func() {
 
 	entityJob := func() {
 		//Do not modify the execution order
-		entities.FilterEntities.Clone(&oldEntities.FilterEntities)
-		entities.FilterEntities.Reload(tableModel.FilterEntityTableModel.Rows, envCfg)
 
-		entities.RecallEntities.Clone(&oldEntities.RecallEntities)
-		entities.RecallEntities.Reload(tableModel.RecallEntityTableModel.Rows, envCfg,
-			entities.Ress.Pool, poolUpdate, &tableModel)
-		entities.InsertEntities.Clone(&oldEntities.InsertEntities)
-		entities.InsertEntities.Reload(tableModel.InsertEntityTableModel.Rows, envCfg, entities.Ress.Pool)
+		entities.FilterEntities = *freqfilter.NewFilterEntities(tableModel.FilterEntityTableModel.Rows, envCfg)
 
-		entities.ScatterEntities.Clone(&oldEntities.ScatterEntities)
-		entities.ScatterEntities.Reload(tableModel.ScatterEntityTableModel.Rows, envCfg)
-		entities.ScatterEntities.Clone(&oldEntities.ScatterEntities)
-		entities.ScatterEntities.Reload(tableModel.ScatterEntityTableModel.Rows, envCfg)
+		entities.RecallEntities = *recall.NewRecallEntities(tableModel.RecallEntityTableModel.Rows, envCfg, &entities.Ress,
+			&tableModel)
 
-		entities.RankEntities.Clone(&oldEntities.RankEntities)
-		entities.RankEntities.Reload(tableModel.RankEntityTableModel.Rows, envCfg)
-		entities.WeightedEntities.Clone(&oldEntities.WeightedEntities)
-		entities.WeightedEntities.Reload(tableModel.WeightedEntityTableModel.Rows, envCfg)
-		entities.StrategyEntities.Clone(&oldEntities.StrategyEntities)
-		entities.StrategyEntities.Reload(tableModel.StrategyEntityTableModel.Rows, envCfg)
+		entities.InsertEntities = *insert.NewInsertEntities(tableModel.InsertEntityTableModel.Rows, envCfg, &entities.Ress)
+
+		entities.ScatterEntities = *scatter.NewScatterEntities(tableModel.ScatterEntityTableModel.Rows, envCfg)
+
+		entities.RankEntities = *rank.NewRankEntities(tableModel.RankEntityTableModel.Rows, envCfg)
+		entities.WeightedEntities = *weighted.NewWeightedEntities(tableModel.WeightedEntityTableModel.Rows, envCfg)
+
 		entities.Model = tableModel
 		atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&mgr.entities)), unsafe.Pointer(entities))
 	}
@@ -113,7 +157,7 @@ func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) func() {
 	//如果source job 没有就立马更新
 	if len(sourceJobs) == 0 {
 		entityJob()
-		return nil
+		return nil, nil
 	} else {
 		sourceJobs = append(sourceJobs, entityJob)
 		return func() {
@@ -122,7 +166,7 @@ func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) func() {
 					job()
 				}
 			}
-		}
+		}, nil
 	}
 }
 

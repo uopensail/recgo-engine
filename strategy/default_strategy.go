@@ -4,7 +4,7 @@ import (
 	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/recgo-engine/model"
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
-	"github.com/uopensail/sunmao/strategy/filter"
+
 	"github.com/uopensail/ulib/zlog"
 	"go.uber.org/zap"
 
@@ -43,7 +43,7 @@ func (entity *DefaultStrategyEntity) Meta() *table.StrategyEntityMeta {
 	return &entity.cfg
 }
 
-type Filters []filter.IFliter
+type Filters []freqfilter.IFliter
 
 func (fiters Filters) Check(id int) bool {
 	for _, filter := range fiters {

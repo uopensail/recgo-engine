@@ -1,11 +1,11 @@
 package resources
 
 import (
-	"path"
 	"strings"
 
 	"github.com/uopensail/recgo-engine/config"
 	xutils "github.com/uopensail/recgo-engine/utils"
+	"github.com/uopensail/ulib/pool"
 	"github.com/uopensail/ulib/utils"
 	"github.com/uopensail/ulib/zlog"
 
@@ -16,21 +16,26 @@ type SubPoolCollectionResource struct {
 	SubPool map[int]Collection // 有序集合
 }
 
-func NewSubPoolCollectionResource(envCfg config.EnvConfig, location string) (*SubPoolCollectionResource, error) {
+func NewSubPoolCollectionResource(envCfg config.EnvConfig, location string, pl *pool.Pool) (*SubPoolCollectionResource, error) {
 
 	fs := &SubPoolCollectionResource{
 		SubPool: make(map[int]Collection),
 	}
 	// 加载物料子集合
 	subPoolCollection := make(map[int]Collection)
-	err := xutils.FileReadLine(path.Join(envCfg.WorkDir, "resource", "subpool.txt"), func(line string) {
+	err := xutils.FileReadLine(location, func(line string) {
 		vvs := strings.Split(line, "\t")
 		if len(vvs) < 2 {
 			return
 		}
 
 		key := utils.String2Int(vvs[0])
-		vv := utils.String2IntList(vvs[1], ",")
+		vvStr := utils.StringSplit(vvs[1], ",")
+		vv := make([]int, 0, len(vvStr))
+		for _, v := range vvStr {
+			item := pl.GetByKey(v)
+			vv = append(vv, item.ID)
+		}
 		subPoolCollection[key] = vv
 	})
 	fs.SubPool = subPoolCollection

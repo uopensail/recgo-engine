@@ -22,15 +22,15 @@ type InvertInexRecall struct {
 	*pool.Pool
 }
 
-func NewInvertInexRecall(meta table.RecallEntityMeta, pl *pool.Pool, dbModel *dbmodel.DBTabelModel) IRecallStrategyEntity {
+func NewInvertInexRecall(meta table.RecallEntityMeta, ress *resources.Resource, dbModel *dbmodel.DBTabelModel) IRecallStrategyEntity {
 	//
 
 	recall := InvertInexRecall{
-		Pool:             pl,
+		Pool:             ress.Pool,
 		RecallEntityMeta: meta,
 	}
 	recall.InvertInexRecallMeta = meta.ParseInvertInexRecallMeta()
-	recall.condition = resources.BuildCondition(pl, pl.WholeCollection, "", recall.Condition)
+	recall.condition = resources.BuildCondition(ress, ress.Pool.WholeCollection, recall.Condition)
 
 	return &recall
 }
@@ -106,7 +106,7 @@ func (r *InvertInexRecall) do(uCtx *userctx.UserContext, filter model.IFliter) [
 	}
 
 	if r.condition != nil {
-		tmpCollection = r.condition.Check("user", uCtx.UFeat, tmpCollection)
+		tmpCollection = r.condition.Check(uCtx.UFeat, tmpCollection)
 	}
 	return tmpCollection
 }

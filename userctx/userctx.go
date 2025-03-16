@@ -33,21 +33,21 @@ type UserFilter struct {
 	whiteList *WhiteList
 }
 
-func newUserFilter(excludeList resources.Collection, subPool *SubPool, pl *pool.Pool, condition string) *UserFilter {
+func newUserFilter(excludeList resources.Collection, subPool *SubPool, ress *resources.Resource, condition string) *UserFilter {
 	userFilter := UserFilter{
 		excludeCollection: excludeList,
 	}
 	var apiFilterStaticCollection resources.Collection
 	if subPool != nil {
 		if len(condition) != 0 {
-			apiFilterStaticCollection = resources.BuildCollection(pl, subPool.collection, "", condition)
+			apiFilterStaticCollection = resources.BuildCollection(ress, subPool.collection, condition)
 			userFilter.whiteList = NewWhitList(apiFilterStaticCollection)
 		} else {
 			userFilter.whiteList = NewWhitList(subPool.collection)
 		}
 	} else {
 		if len(condition) != 0 {
-			apiFilterStaticCollection = resources.BuildCollection(pl, pl.WholeCollection, "", condition)
+			apiFilterStaticCollection = resources.BuildCollection(ress, ress.Pool.WholeCollection, condition)
 			userFilter.whiteList = NewWhitList(apiFilterStaticCollection)
 		}
 		//不设置白名单,那么全部通过
@@ -117,7 +117,7 @@ func NewUserContext(ctx context.Context, apiReq *recapi.RecRequest,
 
 	//查看命中的物料子集
 	//TODO: 根据Pipeline 配置子集, 根据api conditon
-	uCtx.UserFilter = *newUserFilter(excludeList, nil, ress.Pool, "")
+	uCtx.UserFilter = *newUserFilter(excludeList, nil, ress, apiReq.FilterCondition)
 	return &uCtx
 }
 

@@ -9,7 +9,6 @@ import (
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
 	"github.com/uopensail/recgo-engine/userctx"
 
-	"github.com/uopensail/recgo-engine/utils"
 	"github.com/uopensail/ulib/prome"
 )
 
@@ -17,13 +16,17 @@ type ScatterEntities struct {
 	Entities map[int]IStrategyEntity
 }
 
-func (entities *ScatterEntities) Clone(a *ScatterEntities) {
-	entities.Entities = make(map[int]IStrategyEntity)
-	if a != nil {
-		for k, v := range a.Entities {
-			entities.Entities[k] = v
+func NewScatterEntities(newConfs []table.ScatterEntityMeta, envCfg config.EnvConfig) *ScatterEntities {
+	entities := &ScatterEntities{
+		Entities: make(map[int]IStrategyEntity),
+	}
+	for k, v := range newConfs {
+		s := PluginFactoryCreate(v, envCfg)
+		if s != nil {
+			entities.Entities[k] = s
 		}
 	}
+	return entities
 }
 
 func (entities *ScatterEntities) GetStrategy(id int) IStrategyEntity {
@@ -35,33 +38,6 @@ func (entities *ScatterEntities) GetStrategy(id int) IStrategyEntity {
 	}
 	stat.MarkErr()
 	return nil
-
-}
-
-func (entities *ScatterEntities) Reload(newConfs []table.ScatterEntityMeta, envCfg config.EnvConfig) {
-	oldConfs := make([]table.ScatterEntityMeta, 0, len(entities.Entities))
-	for _, v := range entities.Entities {
-		cfg := v.Meta()
-		oldConfs = append(oldConfs, *cfg)
-	}
-
-	invalidM, upsertM := utils.CheckUpsert(oldConfs, newConfs)
-
-	if len(invalidM)+len(upsertM) <= 0 {
-		return
-	}
-
-	for k, v := range upsertM {
-		s := PluginFactoryCreate(v, envCfg)
-		if s != nil {
-			entities.Entities[k] = s
-		}
-	}
-
-	//删除
-	for k := range invalidM {
-		delete(entities.Entities, k)
-	}
 
 }
 

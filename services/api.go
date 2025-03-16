@@ -19,12 +19,12 @@ import (
 func (srv *Services) Recommend(ctx context.Context, in *recapi.RecRequest) (*recapi.RecResponse, error) {
 	stat := prome.NewStat("HomeRecommend")
 	defer stat.End()
-	modelEntities := strategy.EntitiesMgr.GetModelEntities()
+	entities := strategy.EntitiesMgr.GetEntities()
 	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*100)
 	defer cancel()
-	uCtx := userctx.NewUserContext(ctx, in, &modelEntities.Ress, &modelEntities.Model,
-		&modelEntities.FilterResources)
-	recResult, err := srv.feedDefaultRec(uCtx, modelEntities)
+	uCtx := userctx.NewUserContext(ctx, in, &entities.Ress, &entities.Model,
+		&entities.FilterResources)
+	recResult, err := srv.feedDefaultRec(uCtx, entities.ModelEntities)
 	if err != nil {
 		return nil, err
 	}
@@ -83,11 +83,11 @@ func (srv *Services) UsrCtxInfoHandler(gCtx *gin.Context) {
 		})
 		return
 	}
-	modelEntities := strategy.EntitiesMgr.GetModelEntities()
+	entities := strategy.EntitiesMgr.GetEntities()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 	defer cancel()
-	uCtx := userctx.NewUserContext(ctx, &postData, &modelEntities.Ress, &modelEntities.Model,
-		&modelEntities.FilterResources)
+	uCtx := userctx.NewUserContext(ctx, &postData, &entities.Ress, &entities.Model,
+		&entities.FilterResources)
 
 	uCtxInfo := struct {
 		userctx.UserFeatures

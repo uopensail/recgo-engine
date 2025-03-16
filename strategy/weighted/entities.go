@@ -9,7 +9,6 @@ import (
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
 	"github.com/uopensail/recgo-engine/userctx"
 
-	"github.com/uopensail/recgo-engine/utils"
 	"github.com/uopensail/ulib/prome"
 )
 
@@ -17,13 +16,17 @@ type WeightedEntities struct {
 	Entities map[int]IStrategyEntity
 }
 
-func (entities *WeightedEntities) Clone(a *WeightedEntities) {
-	entities.Entities = make(map[int]IStrategyEntity)
-	if a != nil {
-		for k, v := range a.Entities {
-			entities.Entities[k] = v
+func NewWeightedEntities(newConfs []table.WeightedEntityMeta, envCfg config.EnvConfig) *WeightedEntities {
+	entities := &WeightedEntities{
+		Entities: make(map[int]IStrategyEntity),
+	}
+	for k, v := range newConfs {
+		s := PluginFactoryCreate(v, envCfg)
+		if s != nil {
+			entities.Entities[k] = s
 		}
 	}
+	return entities
 }
 func (entities *WeightedEntities) GetStrategy(id int) IStrategyEntity {
 	stat := prome.NewStat(fmt.Sprintf("match.GetStrategy.%d", id))
@@ -34,33 +37,6 @@ func (entities *WeightedEntities) GetStrategy(id int) IStrategyEntity {
 	}
 	stat.MarkErr()
 	return nil
-
-}
-
-func (entities *WeightedEntities) Reload(newConfs []table.WeightedEntityMeta, envCfg config.EnvConfig) {
-	oldConfs := make([]table.WeightedEntityMeta, 0, len(entities.Entities))
-	for _, v := range entities.Entities {
-		cfg := v.Meta()
-		oldConfs = append(oldConfs, *cfg)
-	}
-
-	invalidM, upsertM := utils.CheckUpsert(oldConfs, newConfs)
-
-	if len(invalidM)+len(upsertM) <= 0 {
-		return
-	}
-
-	for k, v := range upsertM {
-		s := PluginFactoryCreate(v, envCfg)
-		if s != nil {
-			entities.Entities[k] = s
-		}
-	}
-
-	//删除
-	for k := range invalidM {
-		delete(entities.Entities, k)
-	}
 
 }
 

@@ -3,7 +3,6 @@ package resources
 import (
 	"unsafe"
 
-	"github.com/uopensail/ulib/pool"
 	"github.com/uopensail/ulib/prome"
 	"github.com/uopensail/ulib/sample"
 	"github.com/uopensail/ulib/uno"
@@ -16,10 +15,10 @@ type Condition struct {
 	slices    [][]unsafe.Pointer
 }
 
-func BuildCondition(pl *pool.Pool, collection Collection, sourceName string, condition string) *Condition {
+func BuildCondition(ress *Resource, collection Collection, condition string) *Condition {
 	stat := prome.NewStat("BuildCondition")
 	defer stat.End()
-	evaluator, err := uno.NewEvaluator(condition)
+	evaluator, err := uno.NewEvaluator(condition, ress.FieldDataType)
 	if err != nil {
 		zlog.LOG.Error("build condition error", zap.Error(err))
 		stat.MarkErr()
@@ -27,21 +26,21 @@ func BuildCondition(pl *pool.Pool, collection Collection, sourceName string, con
 	}
 	c := &Condition{
 		evaluator: evaluator,
-		slices:    make([][]unsafe.Pointer, pl.Len()),
+		slices:    make([][]unsafe.Pointer, ress.Pool.Len()),
 	}
 
 	for i := 0; i < len(collection); i++ {
 		slice := evaluator.Allocate()
 		itemID := collection[i]
-		item := pl.GetById(itemID)
-		evaluator.Fill(sourceName, &item.Feats, slice)
+		item := ress.Pool.GetById(itemID)
+		evaluator.Fill(&item.Feats, slice)
 		evaluator.PreEval(slice)
 		c.slices[itemID] = slice
 	}
 	return c
 }
 
-func (c *Condition) Check(featureTable string, features sample.Features, collection Collection) Collection {
+func (c *Condition) Check(features sample.Features, collection Collection) Collection {
 	stat := prome.NewStat("Condition.Check")
 	defer stat.End()
 	var slice []unsafe.Pointer
@@ -50,7 +49,7 @@ func (c *Condition) Check(featureTable string, features sample.Features, collect
 
 	slices := make([][]unsafe.Pointer, 0, len(collection))
 	slice = c.evaluator.Allocate()
-	c.evaluator.Fill(featureTable, features, slice)
+	c.evaluator.Fill(features, slice)
 	address := make([]uintptr, len(slice))
 	for i := 0; i < len(slice); i++ {
 		address[i] = uintptr(slice[i])
@@ -76,7 +75,7 @@ func (c *Condition) Check(featureTable string, features sample.Features, collect
 	return ret
 }
 
-func (c *Condition) CheckWithFillRuntime(featureTable string, features sample.Features, collection Collection, itemTableName string,
+func (c *Condition) CheckWithFillRuntime(features sample.Features, collection Collection, itemTableName string,
 	onGetItem func(id int, indexInCollection int) sample.Features) Collection {
 	stat := prome.NewStat("Condition.Check")
 	defer stat.End()
@@ -86,7 +85,7 @@ func (c *Condition) CheckWithFillRuntime(featureTable string, features sample.Fe
 
 	slices := make([][]unsafe.Pointer, 0, len(collection))
 	slice = c.evaluator.Allocate()
-	c.evaluator.Fill(featureTable, features, slice)
+	c.evaluator.Fill(features, slice)
 	address := make([]uintptr, len(slice))
 	for i := 0; i < len(slice); i++ {
 		address[i] = uintptr(slice[i])
@@ -105,7 +104,7 @@ func (c *Condition) CheckWithFillRuntime(featureTable string, features sample.Fe
 			itemF := onGetItem(id, i)
 			if itemF != nil {
 
-				c.evaluator.Fill(itemTableName, itemF, newSlice)
+				c.evaluator.Fill(itemF, newSlice)
 			}
 		}
 		slices = append(slices, newSlice)
@@ -134,7 +133,7 @@ func (c *Condition) CheckAll(featureTable string, features sample.Features) Coll
 	for i := 0; i < len(slice); i++ {
 		address[i] = uintptr(slice[i])
 	}
-	c.evaluator.Fill(featureTable, features, slice)
+	c.evaluator.Fill(features, slice)
 
 	for i := 0; i < len(c.slices); i++ {
 		newSlice = make([]unsafe.Pointer, len(c.slices[i]))

@@ -33,10 +33,10 @@ func BinarySearch(arr Collection, target int) bool {
 	return false // 未找到目标值
 }
 
-func BuildCollectionBitmap(pl *pool.Pool, collection Collection, sourceName string, condition string) datastruct.BitMap {
+func BuildCollectionBitmap(ress *Resource, collection Collection, sourceName string, condition string) datastruct.BitMap {
 	stat := prome.NewStat("BuildCollection")
 	defer stat.End()
-	evaluator, err := uno.NewEvaluator(condition)
+	evaluator, err := uno.NewEvaluator(condition, ress.FieldDataType)
 	if err != nil {
 		zlog.LOG.Error("build collection condition error", zap.Error(err))
 		stat.MarkErr()
@@ -45,13 +45,13 @@ func BuildCollectionBitmap(pl *pool.Pool, collection Collection, sourceName stri
 	defer evaluator.Release()
 
 	var status int32
-	ret := datastruct.CreateBitMap(pl.Len())
+	ret := datastruct.CreateBitMap(ress.Pool.Len())
 	for i := 0; i < len(collection); i++ {
 		slice := evaluator.Allocate()
 		itemID := collection[i]
-		item := pl.GetById(itemID)
+		item := ress.Pool.GetById(itemID)
 		if item != nil {
-			evaluator.Fill(sourceName, &item.Feats, slice)
+			evaluator.Fill(&item.Feats, slice)
 			status = evaluator.Eval(slice)
 			if status == 1 {
 				ret.MarkTrue(itemID)
@@ -64,10 +64,10 @@ func BuildCollectionBitmap(pl *pool.Pool, collection Collection, sourceName stri
 	return ret
 }
 
-func BuildCollection(pl *pool.Pool, collection Collection, sourceName string, condition string) Collection {
+func BuildCollection(ress *Resource, collection Collection, condition string) Collection {
 	stat := prome.NewStat("BuildCollection")
 	defer stat.End()
-	evaluator, err := uno.NewEvaluator(condition)
+	evaluator, err := uno.NewEvaluator(condition, ress.FieldDataType)
 	if err != nil {
 		zlog.LOG.Error("build collection condition error", zap.Error(err))
 		stat.MarkErr()
@@ -80,9 +80,9 @@ func BuildCollection(pl *pool.Pool, collection Collection, sourceName string, co
 	for i := 0; i < len(collection); i++ {
 		slice := evaluator.Allocate()
 		id := collection[i]
-		item := pl.GetById(id)
+		item := ress.Pool.GetById(id)
 		if item != nil {
-			evaluator.Fill(sourceName, &item.Feats, slice)
+			evaluator.Fill(&item.Feats, slice)
 			status = evaluator.Eval(slice)
 			if status == 1 {
 				ret = append(ret, id)

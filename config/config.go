@@ -24,8 +24,6 @@ type AppConfig struct {
 	EnvConfig                 `toml:"env"`
 
 	sdkcore.KongMingSDKConfig `toml:"absdk"`
-
-	Fuku FukuClientConfig `toml:"fuku"`
 }
 type EnvConfig struct {
 	Finder  commonconfig.FinderConfig `json:"finder" toml:"finder"`

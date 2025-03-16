@@ -22,7 +22,7 @@ def write_file(path, items):
             fd.write("\n")
 
 if __name__ == "__main__":
-    path = sys.argv[1]
+    dir = sys.argv[1]
     count = sys.argv[2]
     items = gen_items(int(count))
-    write_file(path, items)
+    write_file(dir +"/w2v.txt", items)

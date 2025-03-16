@@ -4,9 +4,9 @@ import (
 	"github.com/uopensail/recgo-engine/model"
 	"github.com/uopensail/recgo-engine/model/dbmodel"
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
+	"github.com/uopensail/recgo-engine/resources"
 	"github.com/uopensail/recgo-engine/userctx"
 
-	"github.com/uopensail/ulib/pool"
 	"github.com/uopensail/ulib/zlog"
 	"go.uber.org/zap"
 )
@@ -20,7 +20,7 @@ type IRecallStrategyEntity interface {
 	Meta() *table.RecallEntityMeta
 	Close()
 }
-type PluginCreateFunc func(cfg table.RecallEntityMeta, pl *pool.Pool, dbModel *dbmodel.DBTabelModel) IRecallStrategyEntity
+type PluginCreateFunc func(cfg table.RecallEntityMeta, ress *resources.Resource, dbModel *dbmodel.DBTabelModel) IRecallStrategyEntity
 
 var pluginFactorys map[string]PluginCreateFunc
 
@@ -35,11 +35,11 @@ func RegisterPlugin(name string, createFunc PluginCreateFunc) {
 	}
 }
 
-func PluginFactoryCreate(cfg table.RecallEntityMeta, pl *pool.Pool, dbModel *dbmodel.DBTabelModel) IRecallStrategyEntity {
+func PluginFactoryCreate(cfg table.RecallEntityMeta, ress *resources.Resource, dbModel *dbmodel.DBTabelModel) IRecallStrategyEntity {
 
 	if createFunc, ok := pluginFactorys[cfg.PluginName]; ok {
 		if createFunc != nil {
-			return createFunc(cfg, pl, dbModel)
+			return createFunc(cfg, ress, dbModel)
 		}
 	}
 	return nil

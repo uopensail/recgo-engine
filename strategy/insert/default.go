@@ -8,7 +8,6 @@ import (
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
 	"github.com/uopensail/recgo-engine/resources"
 
-	"github.com/uopensail/ulib/pool"
 	"github.com/uopensail/ulib/sample"
 	"github.com/uopensail/ulib/utils"
 
@@ -25,12 +24,12 @@ type DefaultEntity struct {
 	runtimeCond *resources.Condition
 }
 
-func NewDefaultEntity(cfg table.InsertEntityMeta, env config.EnvConfig, pl *pool.Pool) IStrategyEntity {
+func NewDefaultEntity(cfg table.InsertEntityMeta, env config.EnvConfig, ress *resources.Resource) IStrategyEntity {
 	entity := &DefaultEntity{
 		cfg: cfg,
 	}
 	if len(cfg.Condition) > 0 {
-		entity.runtimeCond = resources.BuildCondition(pl, pl.WholeCollection, "pool", cfg.Condition)
+		entity.runtimeCond = resources.BuildCondition(ress, ress.Pool.WholeCollection, cfg.Condition)
 	}
 	entity.ref.CloseHandler = func() {
 		if entity.runtimeCond != nil {
@@ -52,7 +51,7 @@ func (entity *DefaultEntity) Do(uCtx *userctx.UserContext, in model.StageResult)
 		itemFeatures[i] = &in.StageList[i].ItemFeatures
 	}
 	if entity.runtimeCond != nil && entity.cfg.Limit > 0 {
-		resultC := entity.runtimeCond.CheckWithFillRuntime("user", uCtx.UFeat, collection, "pool", func(id, indexInCollection int) sample.Features {
+		resultC := entity.runtimeCond.CheckWithFillRuntime(uCtx.UFeat, collection, "pool", func(id, indexInCollection int) sample.Features {
 			return itemFeatures[indexInCollection]
 		})
 		ret := make([]int, 0, entity.cfg.Limit)
