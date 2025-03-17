@@ -12,7 +12,7 @@ require (
 	github.com/swaggo/files v0.0.0-20210815190702-a29dd2bc99b2
 	github.com/swaggo/gin-swagger v1.4.3
 	github.com/tidwall/gjson v1.17.0
-	github.com/uopensail/kongming-sdk-go v0.0.2-0.20220530031105-2dc48560b2de
+	github.com/uopensail/kongming-sdk-go v0.0.2
 	github.com/uopensail/uapi v0.0.0-20231112043606-ebd7aabf0487
 	github.com/uopensail/ulib v0.0.21-0.20250301111407-dfaa888cc074
 	go.etcd.io/etcd/client/v3 v3.5.9
