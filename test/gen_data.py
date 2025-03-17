@@ -4,6 +4,8 @@ import json
 import pandas as pd
 from pandasql import sqldf
 import itertools
+import os
+
 
 
 class FeatureType:
@@ -62,7 +64,7 @@ def write_dict_str_file(path, itemdict):
 
 
 class InvertIndex:
-    def __init__(self, itemdf, schema, fileds_list):
+    def __init__(self, workdir, itemdf, schema, fileds_list):
         self.itemdf = itemdf
         invert_index = {}
         for field_name in fileds_list:
@@ -72,19 +74,44 @@ class InvertIndex:
                 ret = invert_index_with_items(
                     itemdf, [field_name], schema)
                 for key_t,v in ret.items():
-                    key = ','.join(str(x) for x in key_t)
-                    filed_invert_index[key] = v
+                    filed_invert_index[key_t] = v
             elif (type(field_name) is list):
                 file_name_key = '|'.join(str(x) for x in field_name)
                 ret = invert_index_with_items(
                     itemdf, field_name, schema)
                 for key_t,v in ret.items():
-                    key = ','.join(str(x) for x in key_t)
-                    filed_invert_index[key] = v
+
+                    filed_invert_index[key_t] = v
             else:
                 raise "not suppport"
             invert_index[file_name_key] = filed_invert_index
-            
+        InvertIndex.write_file(workdir, invert_index)
+
+    @staticmethod
+    def write_file(workdir, invert_indexes):
+        invert_index_dir = workdir+"/invert_index"
+        os.makedirs(invert_index_dir, exist_ok=True)
+        for file_name_key, list_v in  invert_indexes.items():
+            field_name = file_name_key.split("|")
+            fullpath = invert_index_dir + "/" +file_name_key
+            with open(fullpath, 'w') as fd:
+                for k, vv in list_v.items():
+                    line_value = ",".join(str(x['id']) for x in vv)
+                    if len(field_name) > 1:
+                        line_key = ""
+                        for i in range(len(field_name)):
+                            if (i != 0):
+                                line_key+="|"
+                            line_key += field_name[i]
+                            line_key += ":"
+                            line_key += k[i]
+
+                    else:
+                        line_key = f"{field_name[0]}|{k[0]}"
+                    fd.write(f"{line_key}\t{line_value}\n")
+
+
+
 
 def invert_index_with_items(dataframe: pd.DataFrame, 
                            field_name_list: list, 
@@ -163,8 +190,8 @@ class Pool:
         write_arrayobj_file(dir + "/pool.txt", self.items)
         write_json_file(dir + "/pool.meta",  meta)
         write_dict_str_file(dir + "/subpool.txt", subpool_filedata)
-        InvertIndex(self.itemdf, schema, [
-                    "d_s_language", "d_s_level"])
+        InvertIndex(dir,self.itemdf, schema, [
+                    "d_s_language", "d_s_level",["d_s_country","d_s_cat"]])
         pass
 
     @staticmethod
