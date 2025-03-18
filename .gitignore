@@ -22,4 +22,4 @@ logs/
 test_data/
 build/
 __debug_bin*
-squirrelcli*
+__pycache__

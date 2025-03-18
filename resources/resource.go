@@ -26,7 +26,7 @@ func loadPoolResource(envCfg config.EnvConfig, resourcesDir string) (*Resource, 
 		InvertIndexRess: make(map[string]InvertIndexFileResource),
 	}
 	// 解析meta
-	err := table.LoadMeta(filepath.Join(resourcesDir, "pool.meta"), &ps.PoolMeta)
+	err := table.LoadMeta(filepath.Join(resourcesDir, "pool.meta.json"), &ps.PoolMeta)
 	if err != nil {
 		return nil, err
 	}

@@ -35,6 +35,9 @@ func NewSubPoolCollectionResource(envCfg config.EnvConfig, location string, pl *
 		vv := make([]int, 0, len(vvStr))
 		for _, v := range vvStr {
 			item := pl.GetByKey(v)
+			if item == nil {
+				continue
+			}
 			vv = append(vv, item.ID)
 		}
 		sort.Ints(vv)

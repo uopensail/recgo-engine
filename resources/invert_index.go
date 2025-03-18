@@ -23,7 +23,7 @@ func NewOrderCollection(vv []int) OrderCollection {
 		Collection: vv,
 	}
 	oc.OrderCollection = make(Collection, len(vv))
-	copy(oc.Collection, oc.OrderCollection)
+	copy(oc.OrderCollection, oc.Collection)
 	sort.Ints(oc.OrderCollection)
 	return oc
 
@@ -61,6 +61,9 @@ func NewInvertIndexFileResource(envCfg config.EnvConfig, location string, pl *po
 		vv := make([]int, 0, len(vvStr))
 		for _, v := range vvStr {
 			item := pl.GetByKey(v)
+			if item == nil {
+				continue
+			}
 			vv = append(vv, item.ID)
 		}
 

@@ -2,20 +2,11 @@ import sys
 import random
 import json
 import pandas as pd
-from pandasql import sqldf
-import itertools
-import os
+from build_invert_index import InvertIndex
+from model import FeatureType
+from build_subpool import gen_subpool
 
-
-
-class FeatureType:
-    Int64Type = 0
-    Float32Type = 1
-    StringType = 2
-    Int64sType = 3
-    Float32sType = 4
-    StringsType = 5
-
+ 
 
 def item_filed_schema():
     scores = [1.3, 2.5, 4.5, 0.909]
@@ -62,124 +53,22 @@ def write_dict_str_file(path, itemdict):
             line = item
             fd.write(f"{k}\t{line}\n")
 
-
-class InvertIndex:
-    def __init__(self, workdir, itemdf, schema, fileds_list):
-        self.itemdf = itemdf
-        invert_index = {}
-        for field_name in fileds_list:
-            filed_invert_index = {}
-            if (type(field_name) is str):
-                file_name_key = field_name
-                ret = invert_index_with_items(
-                    itemdf, [field_name], schema)
-                for key_t,v in ret.items():
-                    filed_invert_index[key_t] = v
-            elif (type(field_name) is list):
-                file_name_key = '|'.join(str(x) for x in field_name)
-                ret = invert_index_with_items(
-                    itemdf, field_name, schema)
-                for key_t,v in ret.items():
-
-                    filed_invert_index[key_t] = v
-            else:
-                raise "not suppport"
-            invert_index[file_name_key] = filed_invert_index
-        InvertIndex.write_file(workdir, invert_index)
-
-    @staticmethod
-    def write_file(workdir, invert_indexes):
-        invert_index_dir = workdir+"/invert_index"
-        os.makedirs(invert_index_dir, exist_ok=True)
-        for file_name_key, list_v in  invert_indexes.items():
-            field_name = file_name_key.split("|")
-            fullpath = invert_index_dir + "/" +file_name_key
-            with open(fullpath, 'w') as fd:
-                for k, vv in list_v.items():
-                    line_value = ",".join(str(x['id']) for x in vv)
-                    if len(field_name) > 1:
-                        line_key = ""
-                        for i in range(len(field_name)):
-                            if (i != 0):
-                                line_key+="|"
-                            line_key += field_name[i]
-                            line_key += ":"
-                            line_key += k[i]
-
-                    else:
-                        line_key = f"{field_name[0]}|{k[0]}"
-                    fd.write(f"{line_key}\t{line_value}\n")
-
-
-
-
-def invert_index_with_items(dataframe: pd.DataFrame, 
-                           field_name_list: list, 
-                           meta: dict) -> dict:
-    """
-    返回笛卡尔积组合对应的完整数据项
-    
-    返回结构:
-    {
-        (val1, val2): [
-            {"field1": val1, "field2": val2, ...},  # 完整数据项
-            ...
-        ]
-    }
-    """
-    
-    # 构建基础倒排索引（存储原始索引）
-    field_indices = {}
-    for field in field_name_list:
-        field_type = meta[field][0]
-        
-        if field_type == FeatureType.StringsType:
-            exploded = dataframe[[field]].explode(field)
-            field_index = exploded.groupby(field).apply(lambda x: set(x.index))
-        else:
-            field_index = dataframe.groupby(field).apply(lambda x: set(x.index))
-        
-        field_indices[field] = field_index.to_dict()
-
-    # 生成笛卡尔积组合
-    value_combinations = itertools.product(
-        *[field_indices[field].keys() for field in field_name_list]
-    )
-
-    # 构建最终结果字典
-    result = {}
-    for combination in value_combinations:
-        indices = None
-        for i, field in enumerate(field_name_list):
-            current = field_indices[field].get(combination[i], set())
-            indices = current if indices is None else indices & current
-            if not indices:
-                break
-        
-        if indices:
-            # 获取完整数据项并转换为字典列表
-            items = dataframe.loc[list(indices)].to_dict('records')
-            # 过滤多值字段的无效组合
-            filtered = [
-                item for item in items
-                if all(
-                    (combination[i] in (item[field] if isinstance(item[field], list) else [item[field]]))
-                    for i, field in enumerate(field_name_list)
-                )
-            ]
-            if filtered:
-                result[combination] = filtered
-    
-    return result
-
-
 class Pool:
+    @staticmethod
+    def write_itempool_file(path, items):
+        with open(path, 'w') as fd:
+            i = 0
+            for item in items:
+                id = item["id"]["value"]
+                line = json.dumps(item)
+                fd.write(f"{id}\t{line}\n")
+                i += 1
     def __init__(self, count, dir):
         schema = item_filed_schema()
         self.items = self.gen_items(count, schema)
 
         meta = self.gen_meta(schema)
-        subpool = self.gen_subpool(
+        subpool = gen_subpool(self.itemdf, self.items,
             ["d_s_language='en'", "d_s_level=2 and d_d_ctr > 0.5"])
         subpool_filedata = {}
         subpoolid = 1
@@ -187,38 +76,14 @@ class Pool:
             subpool_filedata[subpoolid] = ",".join(str(x) for x in v)
             subpoolid += 1
 
-        write_arrayobj_file(dir + "/pool.txt", self.items)
-        write_json_file(dir + "/pool.meta",  meta)
+        Pool.write_itempool_file(dir + "/pool.txt", self.items)
+        write_json_file(dir + "/pool.meta.json",  meta)
         write_dict_str_file(dir + "/subpool.txt", subpool_filedata)
         InvertIndex(dir,self.itemdf, schema, [
                     "d_s_language", "d_s_level",["d_s_country","d_s_cat"]])
         pass
 
-    @staticmethod
-    def build_sub_collection(items, subitems):
-        ret = []
-        for subitem in subitems:
-            for i in range(len(items)):
-
-                if subitem['id'] == items[i]['id']['value']:
-                    # print("xxx",subitem, items[i])
-                    ret.append(subitem['id'])
-                    break
-        return ret
-
-    def gen_subpool(self, conditons):
-        # 转换为 DataFrame
-        ret = {}
-        self.itemdf["d_s_cat2"] = self.itemdf["d_s_cat2"].apply(lambda x: ",".join(x) if isinstance(x, list) else x)
-        for condition in conditons:
-            sql = "SELECT * FROM itemdf WHERE " + condition
-
-            result = sqldf(sql, {"itemdf": self.itemdf})
-
-            subitems = result.to_dict(orient="records")
-            ret[condition] = Pool.build_sub_collection(self.items, subitems)
-        return ret
-
+   
     def gen_items(self, count, schema):
         ret = []
         dfdata = []

@@ -13,7 +13,6 @@ require (
 	github.com/swaggo/gin-swagger v1.4.3
 	github.com/tidwall/gjson v1.17.0
 	github.com/uopensail/kongming-sdk-go v0.0.2
-	github.com/uopensail/uapi v0.0.0-20231112043606-ebd7aabf0487
 	github.com/uopensail/ulib v0.0.21-0.20250301111407-dfaa888cc074
 	go.etcd.io/etcd/client/v3 v3.5.9
 	go.uber.org/zap v1.26.0
@@ -71,6 +70,8 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/onsi/ginkgo v1.7.0 // indirect
+	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/prometheus/client_golang v1.16.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
