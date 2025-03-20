@@ -115,27 +115,30 @@ func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) (func(), error) 
 		return nil, err
 	}
 
-	sourceJobs := make([]func(), 0)
-
-	//TODO 优化Resource 变化了才更新
-	ress, err := resources.NewResource(envCfg, filepath.Join(envCfg.WorkDir, "ws/resources"))
-	if err != nil {
-		zlog.LOG.Error("NewResource", zap.Error(err))
-		return nil, err
-	}
+	sourceJobs := make([]func() bool, 0)
 	entities := &Entities{
-
 		ModelEntities: &ModelEntities{
-			Ress: *ress,
+			Ress: oldEntities.Ress,
 		},
 	}
+	resourceJob := func() bool {
+		//TODO 优化Resource 变化了才更新
+		ress, err := resources.NewResource(envCfg, filepath.Join(envCfg.WorkDir, "ws/resources"))
+		if err != nil {
+			zlog.LOG.Error("NewResource", zap.Error(err))
+			return false
+		}
+		entities.ModelEntities.Ress = *ress
+		return true
+	}
+	sourceJobs = append(sourceJobs, resourceJob)
 	entities.FilterResources.Clone(&oldEntities.FilterResources)
 	job := entities.FilterResources.Reload(tableModel.FilterResourceTableModel.Rows, envCfg)
 	if job != nil {
 		sourceJobs = append(sourceJobs, job)
 	}
 
-	entityJob := func() {
+	entityJob := func() bool {
 		//Do not modify the execution order
 
 		entities.FilterEntities = *freqfilter.NewFilterEntities(tableModel.FilterEntityTableModel.Rows, envCfg)
@@ -152,6 +155,7 @@ func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) (func(), error) 
 		entities.StrategyEntities = *NewStrategyEntities(tableModel.StrategyEntityTableModel.Rows, envCfg)
 		entities.Model = tableModel
 		atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&mgr.entities)), unsafe.Pointer(entities))
+		return true
 	}
 
 	//如果source job 没有就立马更新
@@ -163,7 +167,11 @@ func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) (func(), error) 
 		return func() {
 			for _, job := range sourceJobs {
 				if job != nil {
-					job()
+					isContinue := job()
+					if isContinue == false {
+						zlog.LOG.Info("load job break", zap.Bool("isContinue", isContinue))
+						return
+					}
 				}
 			}
 		}, nil

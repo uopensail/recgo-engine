@@ -2,6 +2,8 @@ package recall
 
 import (
 	"math"
+	"strconv"
+	"strings"
 
 	"github.com/uopensail/recgo-engine/model"
 	"github.com/uopensail/recgo-engine/model/dbmodel"
@@ -13,6 +15,7 @@ import (
 	"github.com/uopensail/ulib/pool"
 	"github.com/uopensail/ulib/prome"
 	"github.com/uopensail/ulib/sample"
+	"github.com/uopensail/ulib/utils"
 )
 
 type InvertInexRecall struct {
@@ -45,8 +48,61 @@ func (r *InvertInexRecall) Do(uCtx *userctx.UserContext, ifilter model.IFliter) 
 	return ret, nil
 }
 func (r *InvertInexRecall) formatKeys(userFeats sample.Features) []string {
-	// TODO:
-	return nil
+
+	// Step 1: 按字段顺序收集值列表
+	allValues := make([][]string, 0, len(r.UserFeatureFields))
+	for _, key := range r.UserFeatureFields {
+		fieldValues := userFeats.Get(key)
+		var ss []string
+		switch fieldValues.Type() {
+		case sample.Int64Type:
+			v, _ := fieldValues.GetInt64()
+			ss = append(ss, utils.Int642String(v))
+		case sample.Int64sType:
+			vv, _ := fieldValues.GetInt64s()
+			for _, v := range vv {
+				ss = append(ss, utils.Int642String(v))
+			}
+		case sample.StringType:
+			v, _ := fieldValues.GetString()
+			ss = append(ss, v)
+		case sample.StringsType:
+			vv, _ := fieldValues.GetStrings()
+			ss = vv
+		case sample.Float32Type, sample.Float32sType:
+			continue
+		}
+		allValues = append(allValues, ss)
+	}
+
+	// Step 2: 生成笛卡尔积（支持任意阶数）
+	result := make([]string, 0)
+	for i, values := range allValues {
+		if len(result) == 0 {
+			// 初始化第一个字段的值
+			for _, v := range values {
+
+				result = append(result, strconv.Itoa(i)+":"+v)
+			}
+		} else {
+			// 迭代生成后续组合
+			var temp []string
+			for _, existing := range result {
+				for _, newVal := range values {
+					var builder strings.Builder
+					builder.WriteString(existing) // 写入已有部分
+					builder.WriteString("|")      // 添加分隔符
+
+					builder.WriteString(strconv.Itoa(i))
+					builder.WriteString(":")
+					builder.WriteString(newVal) // 追加新值
+					temp = append(temp, builder.String())
+				}
+			}
+			result = temp
+		}
+	}
+	return result
 }
 
 func zigzagMerge(tmpCollectionList []resources.Collection, eachMaxCol int, ifilter model.IFliter) resources.Collection {

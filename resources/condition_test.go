@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/uopensail/recgo-engine/model/dbmodel/table"
 	"github.com/uopensail/ulib/pool"
 	"github.com/uopensail/ulib/sample"
 	"golang.org/x/exp/slices"
@@ -13,7 +12,7 @@ import (
 func Test_BuildCollection(t *testing.T) {
 	pl, _ := pool.NewPool("/tmp/sunmao/pool.json")
 	ress := &Resource{
-		PoolMeta: table.PoolMeta{
+		ResourceMeta: ResourceMeta{
 			FieldDataType: map[string]sample.DataType{
 				"d_s_cat1":     sample.StringType,
 				"d_s_language": sample.StringType,

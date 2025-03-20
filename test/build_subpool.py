@@ -16,7 +16,8 @@ def build_sub_collection(items, subitems):
 def gen_subpool(itemdf, items, conditons):
     # 转换为 DataFrame
     ret = {}
-    itemdf["d_s_cat2"] = itemdf["d_s_cat2"].apply(lambda x: ",".join(x) if isinstance(x, list) else x)
+
+    itemdf = itemdf.applymap(lambda x: ",".join(map(str, x)) if isinstance(x, list) else x)
     for condition in conditons:
         sql = "SELECT * FROM itemdf WHERE " + condition
 

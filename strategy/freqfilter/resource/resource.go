@@ -41,7 +41,7 @@ func (sm *Resources) GetResource(id int) Resource {
 	return nil
 }
 
-func (sm *Resources) Reload(newConfs []table.FilterResourceMeta, envCfg config.EnvConfig) func() {
+func (sm *Resources) Reload(newConfs []table.FilterResourceMeta, envCfg config.EnvConfig) func() bool {
 	oldConfs := make([]table.FilterResourceMeta, 0, len(sm.sources))
 	for _, v := range sm.sources {
 		cfg := v.Meta()
@@ -55,7 +55,7 @@ func (sm *Resources) Reload(newConfs []table.FilterResourceMeta, envCfg config.E
 		return nil
 	}
 
-	return func() {
+	return func() bool {
 
 		for k, v := range upsertM {
 			s := Create(v, envCfg)
@@ -74,7 +74,7 @@ func (sm *Resources) Reload(newConfs []table.FilterResourceMeta, envCfg config.E
 			}
 			delete(sm.sources, k)
 		}
-
+		return true
 	}
 
 }

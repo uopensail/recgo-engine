@@ -77,7 +77,7 @@ class Pool:
             subpoolid += 1
 
         Pool.write_itempool_file(dir + "/pool.txt", self.items)
-        write_json_file(dir + "/pool.meta.json",  meta)
+        write_json_file(dir + "/resource.meta.json",  meta)
         write_dict_str_file(dir + "/subpool.txt", subpool_filedata)
         InvertIndex(dir,self.itemdf, schema, [
                     "d_s_language", "d_s_level",["d_s_country","d_s_cat"]])

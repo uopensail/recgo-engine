@@ -8,12 +8,18 @@ import (
 	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
 	"github.com/uopensail/ulib/pool"
+	"github.com/uopensail/ulib/sample"
 	"github.com/uopensail/ulib/zlog"
 	"go.uber.org/zap"
 )
 
+type ResourceMeta struct {
+	FieldDataType map[string]sample.DataType `json:"field_data_type" toml:"field_data_type"`
+}
+
 type Resource struct {
-	table.PoolMeta
+	UserFieldDataType map[string]sample.DataType
+	ResourceMeta
 	*pool.Pool
 
 	SubPoolCollectionRess SubPoolCollectionResource
@@ -26,7 +32,7 @@ func loadPoolResource(envCfg config.EnvConfig, resourcesDir string) (*Resource, 
 		InvertIndexRess: make(map[string]InvertIndexFileResource),
 	}
 	// 解析meta
-	err := table.LoadMeta(filepath.Join(resourcesDir, "pool.meta.json"), &ps.PoolMeta)
+	err := table.LoadMeta(filepath.Join(resourcesDir, "resource.meta.json"), &ps.ResourceMeta)
 	if err != nil {
 		return nil, err
 	}
