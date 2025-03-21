@@ -8,10 +8,6 @@ import (
 	"github.com/uopensail/recgo-engine/model/dbmodel/table"
 )
 
-func makeDefaultPool() table.PoolMeta {
-	return table.PoolMeta{}
-}
-
 func makeFileRecallResource(id int, name, path string) table.RecallResourceMeta {
 	return table.RecallResourceMeta{
 		BaseResourceMeta: table.BaseResourceMeta{

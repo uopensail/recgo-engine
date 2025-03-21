@@ -33,6 +33,9 @@ func (entity *RecallGroupEntity) Do(uCtx *userctx.UserContext, ifilter model.IFl
 		go func() {
 
 			ret, err := matchEntiy.Do(uCtx, ifilter)
+			if len(matchEntiy.Meta().SortKey) > 0 {
+				ret = uCtx.Ress.SortByKey(matchEntiy.Meta().SortKey, ret)
+			}
 			if err != nil {
 				zlog.LOG.Error("match.do", zap.Error(err))
 			}

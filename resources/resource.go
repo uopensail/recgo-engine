@@ -24,6 +24,7 @@ type Resource struct {
 
 	SubPoolCollectionRess SubPoolCollectionResource
 	InvertIndexRess       map[string]InvertIndexFileResource
+	ItemScoresResource
 }
 
 func loadPoolResource(envCfg config.EnvConfig, resourcesDir string) (*Resource, error) {
@@ -79,6 +80,12 @@ func loadPoolResource(envCfg config.EnvConfig, resourcesDir string) (*Resource, 
 	}
 
 	ps.InvertIndexRess = invertIndexRess
+
+	itemScoresResource, err := NewItemScoreResource(envCfg, resourcesDir, pl)
+	if err != nil {
+		zlog.LOG.Warn("NewItemScoreResource error", zap.Error(err))
+	}
+	ps.ItemScoresResource = itemScoresResource
 	return &ps, nil
 
 }

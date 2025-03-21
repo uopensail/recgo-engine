@@ -27,7 +27,7 @@ def invert_index_with_items(dataframe: pd.DataFrame,
         if field_type == FeatureType.StringsType:
             exploded = dataframe[[field]].explode(field)
             field_index = exploded.groupby(field).apply(lambda x: set(x.index))
-        elif field_type == FeatureType.FloatType or field_type == FeatureType.FloatsType:
+        elif field_type == FeatureType.Float32Type or field_type == FeatureType.Float32sType:
             raise "not suppport float type build invert_index"
         else:
             field_index = dataframe.groupby(field).apply(lambda x: set(x.index))

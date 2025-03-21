@@ -1,3 +1,5 @@
+from os import path
+import os
 import sys
 import random
 import json
@@ -5,7 +7,7 @@ import pandas as pd
 from build_invert_index import InvertIndex
 from model import FeatureType
 from build_subpool import gen_subpool
-
+from build_item_score import ItemScores
  
 
 def item_filed_schema():
@@ -65,10 +67,10 @@ class Pool:
                 i += 1
     def __init__(self, count, dir):
         schema = item_filed_schema()
-        self.items = self.gen_items(count, schema)
+        self.items_feature = self.gen_items_feature(count, schema)
 
         meta = self.gen_meta(schema)
-        subpool = gen_subpool(self.itemdf, self.items,
+        subpool = gen_subpool(self.itemdf, self.items_feature,
             ["d_s_language='en'", "d_s_level=2 and d_d_ctr > 0.5"])
         subpool_filedata = {}
         subpoolid = 1
@@ -76,15 +78,16 @@ class Pool:
             subpool_filedata[subpoolid] = ",".join(str(x) for x in v)
             subpoolid += 1
 
-        Pool.write_itempool_file(dir + "/pool.txt", self.items)
+        Pool.write_itempool_file(dir + "/pool.txt", self.items_feature)
         write_json_file(dir + "/resource.meta.json",  meta)
         write_dict_str_file(dir + "/subpool.txt", subpool_filedata)
         InvertIndex(dir,self.itemdf, schema, [
                     "d_s_language", "d_s_level",["d_s_country","d_s_cat"]])
+        ItemScores(dir, self.items_feature)
         pass
 
    
-    def gen_items(self, count, schema):
+    def gen_items_feature(self, count, schema):
         ret = []
         dfdata = []
         for i in range(count):
@@ -112,4 +115,6 @@ class Pool:
 if __name__ == "__main__":
     dir = sys.argv[1]
     count = sys.argv[2]
+    dir = path.join(dir, "resources")
+    os.makedirs(dir, exist_ok=True)
     pool = Pool(int(count), dir)

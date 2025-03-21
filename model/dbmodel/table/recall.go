@@ -15,10 +15,10 @@ type InvertInexRecallMeta struct {
 }
 
 type RecallEntityMeta struct {
-	EntityMeta `json:",inline" toml:",inline" gorm:"embedded"`
-	Condition  string `json:"condition" toml:"condition"`
-
-	PluginParams XJSON `json:"plugin_params" toml:"plugin_params" gorm:"column:plugin_params"`
+	EntityMeta   `json:",inline" toml:",inline" gorm:"embedded"`
+	Condition    string `json:"condition" toml:"condition" gorm:"column:condition"`
+	SortKey      string `json:"sort_key" toml:"sort_key" gorm:"column:sort_key"`
+	PluginParams XJSON  `json:"plugin_params" toml:"plugin_params" gorm:"column:plugin_params"`
 }
 
 func (c *RecallEntityMeta) ParseInvertInexRecallMeta() InvertInexRecallMeta {
