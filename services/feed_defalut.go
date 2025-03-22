@@ -44,7 +44,7 @@ func (srv *Services) feedDefaultRec(ctx context.Context, in *recapi.RecRequest, 
 	}
 
 	//do strategy
-	istrategy := entities.StrategyEntities.GetStrategy(int(HomeRecommendStrategyEntryID))
+	istrategy := entities.StrategyEntities.GetStrategy(in.Pipeline)
 	if istrategy != nil {
 		uCtx.InitUserFilter(istrategy.Meta().SubPoolID)
 

@@ -27,10 +27,10 @@ func NewFilterEntities(newConfs []table.FilterEntityMeta, envCfg config.EnvConfi
 	entities := FilterEntities{
 		Entities: make(map[int]IFilterStrategyEntity, len(newConfs)),
 	}
-	for k, v := range newConfs {
+	for _, v := range newConfs {
 		s := NewFilterEntity(v)
 		if s != nil {
-			entities.Entities[k] = s
+			entities.Entities[v.ID] = s
 		}
 	}
 	return &entities

@@ -15,7 +15,7 @@ import (
 
 func Test_main(t *testing.T) {
 	run("./conf/local/config.toml", "./logs")
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 1)
 
 	conn, err := grpc.NewClient("localhost:3527", grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
@@ -24,10 +24,11 @@ func Test_main(t *testing.T) {
 	defer conn.Close()
 
 	cli := recapi.NewRecServiceClient(conn)
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 1)
 	fmt.Println(cli.Recommend(context.Background(), &recapi.RecRequest{
-		UserId: "",
-		Count:  10,
+		UserId:   "",
+		Count:    10,
+		Pipeline: "home",
 		UserFeature: map[string]*recapi.Feature{
 			"u_d_click_list": {
 				Type: int32(sample.StringsType),
@@ -38,13 +39,19 @@ func Test_main(t *testing.T) {
 			"u_s_country": {
 				Type: int32(sample.StringType),
 				Value: &recapi.FeatureValue{
-					Sv: "ctryus",
+					Sv: "ch",
+				},
+			},
+			"u_s_cat": {
+				Type: int32(sample.StringsType),
+				Value: &recapi.FeatureValue{
+					Svs: []string{"cat1"},
 				},
 			},
 			"u_s_language": {
 				Type: int32(sample.StringType),
 				Value: &recapi.FeatureValue{
-					Sv: "langen",
+					Sv: "cn",
 				},
 			},
 		},

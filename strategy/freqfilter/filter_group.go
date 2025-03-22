@@ -81,12 +81,13 @@ func (fg *filterRuntime) build(userId string, ress *resource.Resources) {
 	wg.Wait()
 }
 
+// True:pass False: filted
 func (fg *filterRuntime) Check(id int) bool {
-	return !(id >= 0 && !fg.block.Exists(id))
+	return (id >= 0 && !fg.block.Exists(id))
 }
 
 type IFliter interface {
-	Check(id int) bool
+	Check(id int) bool // True:pass False: filted
 }
 
 type FilterGroupEntity struct {

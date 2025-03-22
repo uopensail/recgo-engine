@@ -38,28 +38,28 @@ func PluginFactoryCreate(cfg table.StrategyEntityMeta, envCfg config.EnvConfig) 
 }
 
 type StrategyEntities struct {
-	Entities map[int]IStrategyEntity
+	Entities map[string]IStrategyEntity
 }
 
 func NewStrategyEntities(newConfs []table.StrategyEntityMeta, envCfg config.EnvConfig) *StrategyEntities {
 	entities := &StrategyEntities{
-		Entities: make(map[int]IStrategyEntity),
+		Entities: make(map[string]IStrategyEntity),
 	}
 
-	for k, v := range newConfs {
+	for _, v := range newConfs {
 		s := PluginFactoryCreate(v, envCfg)
 		if s != nil {
-			entities.Entities[k] = s
+			entities.Entities[v.Name] = s
 		}
 	}
 	return entities
 }
 
-func (entities *StrategyEntities) GetStrategy(id int) IStrategyEntity {
-	stat := prome.NewStat(fmt.Sprintf("match.GetStrategy.%d", id))
+func (entities *StrategyEntities) GetStrategy(name string) IStrategyEntity {
+	stat := prome.NewStat(fmt.Sprintf("match.GetStrategy.%s", name))
 	defer stat.End()
 
-	if entity, ok := entities.Entities[id]; ok {
+	if entity, ok := entities.Entities[name]; ok {
 		return entity
 	}
 	stat.MarkErr()

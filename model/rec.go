@@ -7,7 +7,7 @@ import (
 )
 
 type IFliter interface {
-	Check(id int) bool
+	Check(id int) bool //True：pass,False : filted
 }
 
 type RecallRecord struct {

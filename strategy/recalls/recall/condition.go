@@ -47,7 +47,7 @@ func (r *ConditionRecall) do(userFeats sample.Features, pl *pool.Pool, filter mo
 	var tmpCollection []int
 	// filter runtime condition
 	if r.condition != nil {
-		tmpCollection = r.condition.Check(userFeats, tmpCollection)
+		tmpCollection = r.condition.CheckAll(userFeats)
 	}
 	k := 0
 	for _, v := range tmpCollection {

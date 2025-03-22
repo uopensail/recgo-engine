@@ -33,7 +33,7 @@ func makeInvertIndexRecallEntity(name, condition string, fields []string) table.
 			UpdateTime: time.Now(),
 			PluginName: "invert_index",
 		},
-		PluginParams: []byte("{\"user_feature_fields\":[\"u_s_country\",\"u_s_cat\"]}"),
+		PluginParams: []byte("{\"resource\":\"d_s_country|d_s_cat\",\"user_feature_fields\":[\"u_s_country\",\"u_s_cat\"]}"),
 	}
 }
 
@@ -95,6 +95,7 @@ func makeStrategyEntity() table.StrategyEntityMeta {
 			PluginName: "default",
 			UpdateTime: time.Now(),
 		},
+		FilterGroupEntityID: 1,
 		RecallGroupEntityID: 1,
 		InsertGroupEntityID: 1,
 		ScatterEntityID:     1,

@@ -58,7 +58,7 @@ func BuildRuntimeEntity(entities *ModelEntities, uCtx *userctx.UserContext, enti
 			}
 		}
 	}
-	cacheEntity := entities.StrategyEntities.GetStrategy(entiyMeta.ID)
+	cacheEntity := entities.StrategyEntities.GetStrategy(entiyMeta.Name)
 
 	return BuildRuntimeDefaultStrategyEntity(cacheEntity, entities, uCtx)
 

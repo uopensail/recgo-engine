@@ -75,7 +75,7 @@ func (c *Condition) Check(features sample.Features, collection Collection) Colle
 	return ret
 }
 
-func (c *Condition) CheckWithFillRuntime(features sample.Features, collection Collection, itemTableName string,
+func (c *Condition) CheckWithFillRuntime(features sample.Features, collection Collection,
 	onGetItem func(id int, indexInCollection int) sample.Features) Collection {
 	stat := prome.NewStat("Condition.Check")
 	defer stat.End()
@@ -121,7 +121,7 @@ func (c *Condition) CheckWithFillRuntime(features sample.Features, collection Co
 	return ret
 }
 
-func (c *Condition) CheckAll(featureTable string, features sample.Features) Collection {
+func (c *Condition) CheckAll(features sample.Features) Collection {
 	stat := prome.NewStat("Condition.CheckAll")
 	defer stat.End()
 	var slice []unsafe.Pointer

@@ -51,7 +51,7 @@ func (entity *DefaultEntity) Do(uCtx *userctx.UserContext, in model.StageResult)
 		itemFeatures[i] = &in.StageList[i].ItemFeatures
 	}
 	if entity.runtimeCond != nil && entity.cfg.Limit > 0 {
-		resultC := entity.runtimeCond.CheckWithFillRuntime(uCtx.UFeat, collection, "pool", func(id, indexInCollection int) sample.Features {
+		resultC := entity.runtimeCond.CheckWithFillRuntime(uCtx.UFeat, collection, func(id, indexInCollection int) sample.Features {
 			return itemFeatures[indexInCollection]
 		})
 		ret := make([]int, 0, entity.cfg.Limit)

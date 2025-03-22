@@ -22,10 +22,10 @@ func NewInsertEntities(newConfs []table.InsertEntityMeta, envCfg config.EnvConfi
 	entities := &InsertEntities{
 		Entities: make(map[int]IStrategyEntity),
 	}
-	for k, v := range newConfs {
+	for _, v := range newConfs {
 		s := PluginFactoryCreate(v, envCfg, ress)
 		if s != nil {
-			entities.Entities[k] = s
+			entities.Entities[v.ID] = s
 		}
 	}
 	return entities

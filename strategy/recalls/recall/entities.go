@@ -22,10 +22,10 @@ func NewRecallEntities(newConfs []table.RecallEntityMeta, envCfg config.EnvConfi
 	entities := RecallEntities{
 		Entities: make(map[int]IRecallStrategyEntity),
 	}
-	for k, v := range newConfs {
+	for _, v := range newConfs {
 		s := PluginFactoryCreate(v, ress, dbModel)
 		if s != nil {
-			entities.Entities[k] = s
+			entities.Entities[v.ID] = s
 		}
 	}
 	return &entities

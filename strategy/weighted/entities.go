@@ -20,10 +20,10 @@ func NewWeightedEntities(newConfs []table.WeightedEntityMeta, envCfg config.EnvC
 	entities := &WeightedEntities{
 		Entities: make(map[int]IStrategyEntity),
 	}
-	for k, v := range newConfs {
+	for _, v := range newConfs {
 		s := PluginFactoryCreate(v, envCfg)
 		if s != nil {
-			entities.Entities[k] = s
+			entities.Entities[v.ID] = s
 		}
 	}
 	return entities
