@@ -13,11 +13,6 @@ type DBModelConfig struct {
 	URL string `toml:"url"`
 }
 
-type FukuClientConfig struct {
-	RequestTimeout                       int `json:"request_timeout" toml:"request_timeout"`
-	commonconfig.RegisterDiscoveryConfig `json:"discovery" toml:"discovery"`
-}
-
 type AppConfig struct {
 	DBModelConfig             `toml:"dbmodel"`
 	commonconfig.ServerConfig `toml:"server"`

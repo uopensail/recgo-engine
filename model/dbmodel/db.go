@@ -65,22 +65,19 @@ func load(db *gorm.DB, tableName string, dest interface{}) {
 }
 
 func LoadDBTables(metaPath string) (DBTables, error) {
-	var tables DBTables
-	if strings.HasPrefix(metaPath, "oss://") || strings.HasPrefix(metaPath, "s3://") || strings.HasPrefix(metaPath, "/") {
-		//TODO: read from object file
-		tb, err := loadAllablesFromFile(metaPath)
-		if err != nil {
-			return DBTables{}, err
-		}
-		tables = tb
+
+	//TODO: read from object file
+	tb, err := loadAllablesFromFile(metaPath)
+	if err != nil {
+		zlog.LOG.Error("loadDBTables", zap.Error(err))
 	} else {
-		tb, err := loadAllablesFromDB(metaPath)
-		if err != nil {
-			return DBTables{}, err
-		}
-		tables = tb
+		return tb, nil
 	}
-	return tables, nil
+	tb, err = loadAllablesFromDB(metaPath)
+	if err != nil {
+		return DBTables{}, err
+	}
+	return tb, nil
 }
 func LoadDBTabelModel(metaPath string) (DBTabelModel, error) {
 	tables, err := LoadDBTables(metaPath)

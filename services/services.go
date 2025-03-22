@@ -17,8 +17,8 @@ import (
 type StrategyEntryID int
 
 const (
-	HomeRecommendStrategyEntryID   StrategyEntryID = 1
-	RelateRecommendStrategyEntryID StrategyEntryID = 1
+	HomeRecommendStrategyEntryID   StrategyEntryID = 0
+	RelateRecommendStrategyEntryID StrategyEntryID = 0
 )
 
 type Services struct {

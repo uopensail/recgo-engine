@@ -1,0 +1,121 @@
+[[filter_resources]]
+  id = 1
+  plugin_name = "redis"
+  name = "f1"
+  update_time = 2025-03-22T13:45:22.670091+08:00
+  [filter_resources.redis]
+    url = "redis://127.0.0.1:6379/1"
+    min_idle_conns = 0
+    timeout = 0
+
+[[recall_entities]]
+  id = 1
+  update_time = 2025-03-22T13:45:22.67009+08:00
+  name = "__insert_recall_a__"
+  status = 0
+  plugin_name = "condition"
+  ab_layer_id = 0
+  condition = "concat(\"ctry\",d_s_country) = u_s_country and concat(\"lang\",d_s_language) =  u_s_language  limit 100"
+  sort_key = ""
+
+[[recall_entities]]
+  id = 2
+  update_time = 2025-03-22T13:45:22.67009+08:00
+  name = "w2v"
+  status = 0
+  plugin_name = "condition"
+  ab_layer_id = 0
+  condition = "(not (d_s_cat1 in (\"cat11\",\"cat13\",\"cat13\"))) or (d_s_cat2 in (\"cat21\",\"cat22\",\"cat23\"))\n\t\tand  d_s_country  = u_s_country\n\t\tand  d_s_language  = u_s_language"
+  sort_key = ""
+
+[[recall_entities]]
+  id = 3
+  update_time = 2025-03-22T13:45:22.67009+08:00
+  name = "country_invert_index"
+  status = 0
+  plugin_name = "invert_index"
+  ab_layer_id = 0
+  condition = "d_s_language =  u_s_language"
+  sort_key = ""
+  plugin_params = "{\"user_feature_fields\":[\"u_s_country\",\"u_s_cat\"]}"
+
+[[recall_group_entities]]
+  id = 1
+  update_time = 2025-03-22T13:45:22.670091+08:00
+  name = "home"
+  status = 0
+  plugin_name = ""
+  ab_layer_id = 0
+  recall_entities = [2, 3]
+
+[[filter_entities]]
+  id = 1
+  update_time = 2025-03-22T13:45:22.670091+08:00
+  name = ""
+  status = 0
+  plugin_name = ""
+  ab_layer_id = 0
+  condition = "ts[int64] > 1742363122"
+  max_count = 2
+  format = "imp_%s"
+  source_id = 1
+  [filter_entities.params]
+    max_length = "150"
+
+[[filter_group_entities]]
+  id = 1
+  update_time = 2025-03-22T13:45:22.670092+08:00
+  name = "f1"
+  status = 0
+  plugin_name = ""
+  ab_layer_id = 0
+  timeout = 0
+  filter_entities = [1]
+
+[[insert_entities]]
+  id = 1
+  update_time = 2025-03-22T13:45:22.67009+08:00
+  name = "a"
+  status = 0
+  plugin_name = "default"
+  ab_layer_id = 0
+  begin = 0
+  end = 5
+  prob = 1.0
+  priority = 0.1
+  recall_id = 1
+  condition = ""
+  limit = 100
+
+[[insert_group_entities]]
+  id = 1
+  update_time = 2025-03-22T13:45:22.670093+08:00
+  name = "home"
+  status = 0
+  plugin_name = ""
+  ab_layer_id = 0
+  insert_entities = [1]
+
+[[scatter_entities]]
+  id = 1
+  update_time = 2025-03-22T13:45:22.670093+08:00
+  name = "cat1"
+  status = 0
+  plugin_name = "window"
+  ab_layer_id = 0
+  plugin_params = "{\"window_size\":8, \"group_limit\": [{\"field\":\"d_s_country\",\"limit\":2}]}"
+
+[[strategy_entities]]
+  id = 1
+  update_time = 2025-03-22T13:45:22.670093+08:00
+  name = "home"
+  status = 0
+  plugin_name = "default"
+  ab_layer_id = 0
+  sub_pool_id = 0
+  filter_group_entity_id = 0
+  recall_group_entity_id = 1
+  rank_entity_id = 0
+  weighted_entity_id = 0
+  insert_group_entity_id = 1
+  scatter_entity_id = 1

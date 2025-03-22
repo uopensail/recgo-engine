@@ -19,7 +19,7 @@ honghu
 .idea/
 .vscode/
 logs/
-test_data/
+mock/data
 build/
 __debug_bin*
 __pycache__

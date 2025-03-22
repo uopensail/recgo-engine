@@ -21,17 +21,13 @@ import (
 
 	"github.com/uopensail/recgo-engine/utils"
 	"github.com/uopensail/ulib/finder"
-	"github.com/uopensail/ulib/targz"
+	xutils "github.com/uopensail/ulib/utils"
 	"github.com/uopensail/ulib/zlog"
 )
 
 type Entities struct {
-	*ModelEntities
-	UpdateTime int64
-}
-
-func (c Entities) GetUpdateTime() int64 {
-	return c.UpdateTime
+	ModelEntities
+	Version int64
 }
 
 type EntitiesManager struct {
@@ -87,28 +83,62 @@ func getFile(envCfg config.EnvConfig, location string) string {
 
 }
 
+func (mgr *EntitiesManager) findLatestEngineDataDir(envCfg config.EnvConfig, locationPrefix string) (string, int64, error) {
+	parentDir := filepath.Dir(locationPrefix)
+	entries, err := os.ReadDir(parentDir)
+	if err != nil {
+		return "", -1, err
+	}
+	maxVersion := -1
+	fileNamePrefix := filepath.Base(locationPrefix)
+	maxDir := ""
+	for _, entry := range entries {
+
+		if entry.IsDir() {
+			dirName := entry.Name()
+			if (strings.HasPrefix(dirName, fileNamePrefix)) == false {
+				continue
+			}
+			// 检查对应.lock目录是否存在
+			lockPath := filepath.Join(parentDir, dirName+".lock")
+			if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
+				continue // 存在.lock目录则跳过
+			}
+			vv := strings.Split(dirName, ".")
+			if len(vv) != 2 {
+				continue
+			}
+			version := xutils.String2Int(vv[1])
+
+			// 比较版本号
+			if version > maxVersion {
+				maxVersion = version
+				maxDir = filepath.Join(parentDir, entry.Name())
+			}
+		}
+	}
+	return maxDir, int64(maxVersion), nil
+
+}
+
 // Do not modify the execution order
 func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) (func(), error) {
 
-	oldEntities := mgr.entities
-
-	finder := finder.GetFinder(&envCfg.Finder)
-	remoteFileUpdateTime := finder.GetUpdateTime(config.AppConfigInstance.URL)
-	if oldEntities.UpdateTime != 0 && remoteFileUpdateTime == oldEntities.UpdateTime {
-		zlog.LOG.Info("no need to update ingore")
-		return nil, nil
-	}
-	locationTarFile := getFile(envCfg, config.AppConfigInstance.URL)
-	// 清理旧的
-	os.RemoveAll(filepath.Join(envCfg.WorkDir, "ws"))
-
-	// unzip
-	err := targz.Extract(locationTarFile, filepath.Join(envCfg.WorkDir, "ws"))
+	engineDataDir, version, err := mgr.findLatestEngineDataDir(envCfg, config.AppConfigInstance.URL)
 	if err != nil {
-		zlog.LOG.Error("targz.Extract", zap.Error(err))
+		zlog.LOG.Error("LoadDBTabelModel", zap.Error(err))
 		return nil, err
 	}
-	tableModel, err := dbmodel.LoadDBTabelModel(filepath.Join(envCfg.WorkDir, "ws/dbmodel.toml"))
+
+	oldEntities := mgr.entities
+
+	if version <= oldEntities.Version {
+		//不需要更新
+		zlog.LOG.Info("Engine Data Don't need Update, use version:", zap.Int64("version", oldEntities.Version))
+		return nil, nil
+	}
+
+	tableModel, err := dbmodel.LoadDBTabelModel(filepath.Join(engineDataDir, "dbmodel.toml"))
 
 	if err != nil {
 		zlog.LOG.Error("LoadDBTabelModel", zap.Error(err))
@@ -117,13 +147,16 @@ func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) (func(), error) 
 
 	sourceJobs := make([]func() bool, 0)
 	entities := &Entities{
-		ModelEntities: &ModelEntities{
-			Ress: oldEntities.Ress,
+		ModelEntities: ModelEntities{
+			Model: tableModel,
 		},
+	}
+	if oldEntities != nil {
+		entities.ModelEntities.Ress = oldEntities.Ress
 	}
 	resourceJob := func() bool {
 		//TODO 优化Resource 变化了才更新
-		ress, err := resources.NewResource(envCfg, filepath.Join(envCfg.WorkDir, "ws/resources"))
+		ress, err := resources.NewResource(envCfg, filepath.Join(engineDataDir, "resources"))
 		if err != nil {
 			zlog.LOG.Error("NewResource", zap.Error(err))
 			return false

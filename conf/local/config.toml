@@ -1,19 +1,13 @@
 [server]
-project_name = "sumao_engine"
+project_name = "recgo_engine"
 grpc_port = 3527
 http_port = 3528
 prome_port = 3529
 pprof_port = 3530
 debug = true
-[server.register.etcd]
-endpoints=["127.0.0.1:2379"]
-name="sunmao"
 [dbmodel]
-url="/tmp/dbmodel.toml"
+url = "mock/data/enginedata"
 [env]
-work_dir="/tmp"
+work_dir = "/data/data/recgo-engine"
 [env.finder]
-type="oss"
-endpoint="oss-cn-shanghai.aliyuncs.com"
-access_key="LTAI5tLkY9Mnyw65QBLhsVaZ"
-secret_key="O4SM7douiz0sou4ZzgbKMmlHJw4Hbd"
+type = "local"

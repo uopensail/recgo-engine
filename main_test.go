@@ -3,20 +3,28 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	_ "net/http/pprof"
 	"testing"
+	"time"
 
-	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/ulib/sample"
-	"github.com/uopensail/ulib/utils"
+	"google.golang.org/grpc"
 )
 
 func Test_main(t *testing.T) {
 	run("./conf/local/config.toml", "./logs")
+	time.Sleep(time.Second * 3)
 
-	conn, _ := utils.NewKratosGrpcConn(config.AppConfigInstance.ServerConfig.RegisterDiscoveryConfig)
+	conn, err := grpc.NewClient("localhost:3527", grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		log.Fatalf("Failed to connect: %v", err)
+	}
+	defer conn.Close()
+
 	cli := recapi.NewRecServiceClient(conn)
+	time.Sleep(time.Second * 3)
 	fmt.Println(cli.Recommend(context.Background(), &recapi.RecRequest{
 		UserId: "",
 		Count:  10,

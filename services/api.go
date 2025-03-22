@@ -23,7 +23,7 @@ func (srv *Services) Recommend(ctx context.Context, in *recapi.RecRequest) (*rec
 	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*100)
 	defer cancel()
 
-	recResult, err := srv.feedDefaultRec(ctx, in, entities.ModelEntities)
+	recResult, err := srv.feedDefaultRec(ctx, in, &entities.ModelEntities)
 	if err != nil {
 		return nil, err
 	}
