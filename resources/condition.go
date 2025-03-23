@@ -129,11 +129,11 @@ func (c *Condition) CheckAll(features sample.Features) Collection {
 
 	slices := make([][]unsafe.Pointer, 0, len(c.slices))
 	slice = c.evaluator.Allocate()
+	c.evaluator.Fill(features, slice)
 	address := make([]uintptr, len(slice))
 	for i := 0; i < len(slice); i++ {
 		address[i] = uintptr(slice[i])
 	}
-	c.evaluator.Fill(features, slice)
 
 	for i := 0; i < len(c.slices); i++ {
 		newSlice = make([]unsafe.Pointer, len(c.slices[i]))

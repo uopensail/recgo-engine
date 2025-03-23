@@ -123,7 +123,7 @@ func zigzagMerge(tmpCollectionList []resources.Collection, eachMaxCol int, ifilt
 
 	// 预分配内存
 	result := make([]int, 0, total)
-	if eachMaxCol < 0 {
+	if eachMaxCol <= 0 {
 		eachMaxCol = math.MaxInt
 	}
 	rowCnt := make([]int, len(tmpCollectionList))
@@ -154,7 +154,7 @@ func (r *InvertInexRecall) do(uCtx *userctx.UserContext, filter model.IFliter) [
 	}
 	//zigzip merger
 	tmpCollection := zigzagMerge(tmpCollectionList, r.EachMaxCol, filter)
-	if r.TopK >= 0 {
+	if r.TopK > 0 {
 		topk := r.TopK
 		if len(tmpCollection) > topk {
 			return tmpCollection[:topk]

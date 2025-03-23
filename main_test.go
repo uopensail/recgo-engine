@@ -48,6 +48,12 @@ func Test_main(t *testing.T) {
 					Svs: []string{"cat1"},
 				},
 			},
+			"u_s_cat1": {
+				Type: int32(sample.StringsType),
+				Value: &recapi.FeatureValue{
+					Svs: []string{"cat1"},
+				},
+			},
 			"u_s_language": {
 				Type: int32(sample.StringType),
 				Value: &recapi.FeatureValue{
