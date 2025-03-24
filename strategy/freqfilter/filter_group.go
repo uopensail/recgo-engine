@@ -114,10 +114,10 @@ func BuildRuntimeEntity(entities *FilterEntities, dbModel *dbmodel.DBTabelModel,
 		return nil
 	}
 	//确认是否命中实验
-	expInfo := uCtx.ABData.GetByLayerID(emeta.ABLayerID)
-	if expInfo != nil {
+	caseValue := uCtx.UserAB.EvalFeatureValue(emeta.ABLayerID)
+	if len(caseValue) > 0 {
 		//查找实验变体
-		relateID, err := strconv.Atoi(expInfo.CaseValue)
+		relateID, err := strconv.Atoi(caseValue)
 		//abEntiy := entitys.Model.ABEntityTableModel.Get(int(expInfo.CaseId))
 		if err == nil {
 			//替换entiyMeta

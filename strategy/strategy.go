@@ -42,23 +42,23 @@ type IStrategyEntity interface {
 	Meta() *table.StrategyEntityMeta
 }
 
-func BuildRuntimeEntity(entities *ModelEntities, uCtx *userctx.UserContext, entiyMeta *table.StrategyEntityMeta) IStrategyEntity {
+func BuildRuntimeEntity(entities *ModelEntities, uCtx *userctx.UserContext, entityMeta *table.StrategyEntityMeta) IStrategyEntity {
 
 	//确认是否命中实验
-	expInfo := uCtx.ABData.GetByLayerID(entiyMeta.ABLayerID)
-	if expInfo != nil {
+	caseValue := uCtx.UserAB.EvalFeatureValue(entityMeta.ABLayerID)
+	if len(caseValue) > 0 {
 		//查找实验变体
-		relateID, err := strconv.Atoi(expInfo.CaseValue)
+		relateID, err := strconv.Atoi(caseValue)
 		//abEntiy := Entities.Model.ABEntityTableModel.Get(int(expInfo.CaseId))
 		if err == nil {
 			//替换entiyMeta
 			expMeta := entities.Model.StrategyEntityTableModel.Get(relateID)
 			if expMeta != nil {
-				entiyMeta = expMeta
+				entityMeta = expMeta
 			}
 		}
 	}
-	cacheEntity := entities.StrategyEntities.GetStrategy(entiyMeta.Name)
+	cacheEntity := entities.StrategyEntities.GetStrategy(entityMeta.Name)
 
 	return BuildRuntimeDefaultStrategyEntity(cacheEntity, entities, uCtx)
 

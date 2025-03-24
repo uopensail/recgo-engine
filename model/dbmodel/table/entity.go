@@ -23,7 +23,7 @@ type EntityMeta struct {
 	Name       string          `json:"name" toml:"name" gorm:"column:name"`
 	Status     Entitiestatus   `json:"status,omitempty" toml:"status" gorm:"column:status"`
 	PluginName string          `json:"plugin_name" toml:"plugin_name" gorm:"column:plugin_name"`
-	ABLayerID  int             `json:"ab_layer_id" toml:"ab_layer_id" gorm:"column:ab_layer_id"` //绑定实验层
+	ABLayerID  string          `json:"ab_layer_id" toml:"ab_layer_id" gorm:"column:ab_layer_id"` //绑定实验层
 	Params     utils.StringMap `json:"params" toml:"params" gorm:"column:params"`
 }
 

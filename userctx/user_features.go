@@ -19,10 +19,10 @@ func Init(rdConf commonconfig.RegisterDiscoveryConfig) {
 	fukuGrpcConn, _ = utils.NewKratosGrpcConn(rdConf)
 }
 
-func (uCtx *UserFeatures) initUserTFeature(uid string, apiReq *recapi.RecRequest) {
+func converUserTFeature(uid string, apiReq *recapi.RecRequest) *sample.MutableFeatures {
 	feat := sample.NewMutableFeatures()
 	feat.Set("u_d_click_list", &sample.Strings{Value: []string{"item_id_4589", "item_id_4408"}})
-	uCtx.UFeat = feat
+
 	if apiReq != nil {
 		for k, v := range apiReq.UserFeature {
 			if v != nil {
@@ -55,25 +55,5 @@ func (uCtx *UserFeatures) initUserTFeature(uid string, apiReq *recapi.RecRequest
 			}
 		}
 	}
-
-	// if nil == fukuGrpcConn {
-	// 	return
-	// }
-	// realcli := fukuapi.NewFuKuClient(fukuGrpcConn)
-
-	// req := fukuapi.FuKuRequest{
-	// 	UserID:   uid,
-	// 	Group:    "all",
-	// 	Features: nil,
-	// }
-
-	// uFeat, err := realcli.Get(context.Background(), &req)
-	// //fmt.Println(uFeat, err)
-	// // uFeat, err := core.FukuSDK.Get(uid, "", nil)
-	// if err != nil {
-	// 	zlog.LOG.Error("FukuSDK.Get", zap.Error(err))
-	// 	return
-	// }
-	// zlog.SLOG.Debug(uid, uFeat)
-
+	return feat
 }

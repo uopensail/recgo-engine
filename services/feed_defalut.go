@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/strategy"
@@ -15,40 +16,21 @@ import (
 )
 
 func (srv *Services) feedDefaultRec(ctx context.Context, in *recapi.RecRequest, entities *strategy.ModelEntities) (*recapi.RecResult, error) {
-	abInfo := userctx.FetchABInfo(userctx.UID(in))
-	uCtx := userctx.NewUserContext(ctx, in, abInfo, &entities.Ress, &entities.Model,
-		&entities.FilterResources)
-	abCaseV := uCtx.ABData.Get("feed.default.rec")
-	ret := recapi.RecResult{
-		UserId:   uCtx.ApiRequest.UserId,
-		DeviceId: uCtx.ApiRequest.DeviceId,
-		TraceId:  uCtx.ApiRequest.TraceId,
-	}
-
-	if abCaseV != nil {
-		switch abCaseV.CaseValue {
-		case "base":
-			uCtx.ABData.MarkHit(abCaseV.CaseId)
-			ret.Expids = uCtx.Mark()
-			//推荐数据埋点
-			go reportLogsdk(uCtx, &ret)
-			return &ret, nil
-		case "exp":
-			uCtx.ABData.MarkHit(abCaseV.CaseId)
-			ret.Expids = uCtx.Mark()
-		default:
-			//推荐数据埋点
-			go reportLogsdk(uCtx, &ret)
-			return &ret, nil
-		}
-	}
 
 	//do strategy
 	istrategy := entities.StrategyEntities.GetStrategy(in.Pipeline)
 	if istrategy != nil {
-		uCtx.InitUserFilter(istrategy.Meta().SubPoolID)
+		strategyMeta := istrategy.Meta()
 
-		istrategy = strategy.BuildRuntimeEntity(entities, uCtx, istrategy.Meta())
+		uCtx := userctx.NewUserContext(ctx, in, &entities.Ress, strategyMeta.SubPoolID, &entities.Model,
+			&entities.FilterResources)
+		ret := recapi.RecResult{
+			UserId:   uCtx.ApiRequest.UserId,
+			DeviceId: uCtx.ApiRequest.DeviceId,
+			TraceId:  uCtx.ApiRequest.TraceId,
+		}
+
+		istrategy = strategy.BuildRuntimeEntity(entities, uCtx, strategyMeta)
 		recRes, err := istrategy.Do(uCtx)
 		if err != nil {
 			zlog.LOG.Error("strategy.do", zap.Error(err))
@@ -65,11 +47,14 @@ func (srv *Services) feedDefaultRec(ctx context.Context, in *recapi.RecRequest, 
 				ret.Items[i] = items[i].Source.Key()
 			}
 		}
+		zlog.SLOG.Debug("api request response ", uCtx.ApiRequest, &ret)
+		//推荐数据埋点
+		go reportLogsdk(uCtx, &ret)
+		return &ret, nil
+	} else {
+		zlog.LOG.Error("not foud strategy", zap.String("request", in.String()))
+		return nil, errors.New("not foud strategy")
 	}
-	zlog.SLOG.Debug("api request response ", uCtx.ApiRequest, &ret)
-	//推荐数据埋点
-	go reportLogsdk(uCtx, &ret)
-	return &ret, nil
 
 }
 

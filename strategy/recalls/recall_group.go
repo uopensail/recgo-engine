@@ -164,10 +164,10 @@ func BuildRuntimeEntity(entities *recall.RecallEntities, dbModel *dbmodel.DBTabe
 		return nil
 	}
 	//确认是否命中实验
-	expInfo := uCtx.ABData.GetByLayerID(recallGroupMeta.ABLayerID)
-	if expInfo != nil {
+	caseValue := uCtx.UserAB.EvalFeatureValue(recallGroupMeta.ABLayerID)
+	if len(caseValue) > 0 {
 		//查找实验变体
-		relateID, err := strconv.Atoi(expInfo.CaseValue)
+		relateID, err := strconv.Atoi(caseValue)
 		//abEntiy := Entities.Model.ABEntityTableModel.Get(int(expInfo.CaseId))
 		if err == nil {
 			//替换entiyMeta

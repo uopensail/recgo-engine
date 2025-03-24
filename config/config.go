@@ -13,12 +13,21 @@ type DBModelConfig struct {
 	URL string `toml:"url"`
 }
 
+type GrowthBookSDKConfig struct {
+	APIHost  string `toml:"api_host"`
+	WriteKey string `toml:"write_key"`
+}
+
+type ABConfig struct {
+	Type                      string `toml:"type"`
+	sdkcore.KongMingSDKConfig `toml:"kongming_ab"`
+	GrowthBookSDKConfig       `toml:"growthbook_ab"`
+}
+
 type AppConfig struct {
 	DBModelConfig             `toml:"dbmodel"`
 	commonconfig.ServerConfig `toml:"server"`
 	EnvConfig                 `toml:"env"`
-
-	sdkcore.KongMingSDKConfig `toml:"absdk"`
 }
 type EnvConfig struct {
 	Finder  commonconfig.FinderConfig `json:"finder" toml:"finder"`

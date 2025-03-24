@@ -85,8 +85,8 @@ func (srv *Services) UsrCtxInfoHandler(gCtx *gin.Context) {
 	entities := strategy.EntitiesMgr.GetEntities()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 	defer cancel()
-	abInfo := userctx.FetchABInfo(userctx.UID(&postData))
-	uCtx := userctx.NewUserContext(ctx, &postData, abInfo, &entities.Ress, &entities.Model,
+
+	uCtx := userctx.NewUserContext(ctx, &postData, &entities.Ress, 0, &entities.Model,
 		&entities.FilterResources)
 
 	uCtxInfo := struct {

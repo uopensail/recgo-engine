@@ -44,25 +44,25 @@ func (entities *InsertEntities) GetStrategy(id int) IStrategyEntity {
 }
 
 func BuildRuntimeEntity(entities *InsertEntities, dbModel *meta.DBTabelModel,
-	uCtx *userctx.UserContext, entiyMeta *table.InsertEntityMeta) IStrategyEntity {
-	if entiyMeta == nil {
+	uCtx *userctx.UserContext, entityMeta *table.InsertEntityMeta) IStrategyEntity {
+	if entityMeta == nil {
 		return nil
 	}
 	//确认是否命中实验
-	expInfo := uCtx.ABData.GetByLayerID(entiyMeta.ABLayerID)
-	if expInfo != nil {
+	caseValue := uCtx.UserAB.EvalFeatureValue(entityMeta.ABLayerID)
+	if len(caseValue) > 0 {
 		//查找实验变体
-		relateID, err := strconv.Atoi(expInfo.CaseValue)
+		relateID, err := strconv.Atoi(caseValue)
 		//abEntiy := Entities.Model.ABEntityTableModel.Get(int(expInfo.CaseId))
 		if err == nil {
 			//替换entiyMeta
 			expMeta := dbModel.InsertEntityTableModel.Get(relateID)
 			if expMeta != nil {
-				entiyMeta = expMeta
+				entityMeta = expMeta
 			}
 		}
 	}
-	ret := entities.GetStrategy(entiyMeta.ID)
+	ret := entities.GetStrategy(entityMeta.ID)
 	return ret
 
 }

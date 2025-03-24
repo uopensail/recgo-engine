@@ -3,7 +3,6 @@ package userctx
 import (
 	"context"
 
-	"github.com/uopensail/kongming-sdk-go/sdkcore"
 	"github.com/uopensail/recgo-engine/model/dbmodel"
 	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/resources"
@@ -78,6 +77,7 @@ type UserContext struct {
 
 	*dbmodel.DBTabelModel // 配置引用
 	Ress                  *resources.Resource
+	SubPool               *SubPool
 	FilterRess            *fresource.Resources
 
 	UserFeatures
@@ -89,10 +89,12 @@ type UserContext struct {
 }
 
 func NewUserContext(ctx context.Context, apiReq *recapi.RecRequest,
-	abInfo *sdkcore.ABData,
+
 	ress *resources.Resource,
+	subPoolID int,
 	dbModel *dbmodel.DBTabelModel,
 	fress *fresource.Resources) *UserContext {
+
 	uCtx := UserContext{
 		Context:      ctx,
 		ApiRequest:   apiReq,
@@ -100,21 +102,29 @@ func NewUserContext(ctx context.Context, apiReq *recapi.RecRequest,
 		Ress:         ress,
 		FilterRess:   fress,
 	}
-	if abInfo != nil {
-		uCtx.UserAB.ABData = *abInfo
-	}
+	uFeat := converUserTFeature(uCtx.UID(), apiReq)
+	uCtx.UserAB = NewUserAB(uCtx.UID(), uFeat)
 	//初始化用户特征
-	uCtx.UserFeatures.initUserTFeature(uCtx.UID(), apiReq)
+	uCtx.UserFeatures.UFeat = uFeat
 	//tran
 
 	if uCtx.ApiRequest != nil {
 		uCtx.RelateItem = ress.Pool.GetByKey(uCtx.ApiRequest.RelateItem)
 	}
 
+	var subPool *SubPool
+	subCollection, ok := uCtx.Ress.SubPoolCollectionRess.SubPool[subPoolID]
+	if ok {
+		subPool = &SubPool{
+			collection: subCollection,
+		}
+		uCtx.SubPool = subPool
+	}
+	uCtx.initUserFilter(uCtx.SubPool)
 	return &uCtx
 }
 
-func (uCtx *UserContext) InitUserFilter(subPoolID int) {
+func (uCtx *UserContext) initUserFilter(subPool *SubPool) {
 	var excludeList resources.Collection
 
 	if uCtx.ApiRequest != nil {
@@ -124,13 +134,7 @@ func (uCtx *UserContext) InitUserFilter(subPoolID int) {
 			excludeList = append(excludeList, item.ID)
 		}
 	}
-	var subPool *SubPool
-	subCollection, ok := uCtx.Ress.SubPoolCollectionRess.SubPool[subPoolID]
-	if ok {
-		subPool = &SubPool{
-			collection: subCollection,
-		}
-	}
+
 	uCtx.UserFilter = *newUserFilter(excludeList, subPool, uCtx.Ress, uCtx.ApiRequest.FilterCondition)
 
 }

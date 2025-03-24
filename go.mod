@@ -8,6 +8,7 @@ require (
 	github.com/go-kratos/kratos/contrib/registry/etcd/v2 v2.0.0-20230830131453-6c026bce56a9
 	github.com/go-kratos/kratos/v2 v2.7.0
 	github.com/go-redis/redis v6.15.9+incompatible
+	github.com/growthbook/growthbook-golang v0.2.1
 	github.com/spf13/cast v1.5.1
 	github.com/swaggo/files v0.0.0-20210815190702-a29dd2bc99b2
 	github.com/swaggo/gin-swagger v1.4.3
@@ -79,6 +80,7 @@ require (
 	github.com/swaggo/swag v1.8.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
+	github.com/tmaxmax/go-sse v0.10.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.1.7 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.9 // indirect
