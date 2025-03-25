@@ -9,13 +9,13 @@ import (
 	"github.com/uopensail/ulib/commonconfig"
 )
 
-type DBModelConfig struct {
+type EngineDataConfig struct {
 	URL string `toml:"url"`
 }
 
 type GrowthBookSDKConfig struct {
-	APIHost  string `toml:"api_host"`
-	WriteKey string `toml:"write_key"`
+	APIHost   string `toml:"api_host"`
+	ClientKey string `toml:"client_key"`
 }
 
 type ABConfig struct {
@@ -25,9 +25,10 @@ type ABConfig struct {
 }
 
 type AppConfig struct {
-	DBModelConfig             `toml:"dbmodel"`
+	EngineDataConfig          `toml:"engine_data"`
 	commonconfig.ServerConfig `toml:"server"`
 	EnvConfig                 `toml:"env"`
+	ABConfig                  `toml:"ab"`
 }
 type EnvConfig struct {
 	Finder  commonconfig.FinderConfig `json:"finder" toml:"finder"`

@@ -114,7 +114,7 @@ func BuildRuntimeEntity(entities *FilterEntities, dbModel *dbmodel.DBTabelModel,
 		return nil
 	}
 	//确认是否命中实验
-	caseValue := uCtx.UserAB.EvalFeatureValue(emeta.ABLayerID)
+	caseValue := uCtx.UserAB.AbInfo.EvalFeatureValue(uCtx.Context, emeta.ABLayerID)
 	if len(caseValue) > 0 {
 		//查找实验变体
 		relateID, err := strconv.Atoi(caseValue)

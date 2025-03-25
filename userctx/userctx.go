@@ -103,7 +103,7 @@ func NewUserContext(ctx context.Context, apiReq *recapi.RecRequest,
 		FilterRess:   fress,
 	}
 	uFeat := converUserTFeature(uCtx.UID(), apiReq)
-	uCtx.UserAB = NewUserAB(uCtx.UID(), uFeat)
+	uCtx.UserAB = NewUserAB(ctx, uCtx.UID(), uFeat)
 	//初始化用户特征
 	uCtx.UserFeatures.UFeat = uFeat
 	//tran

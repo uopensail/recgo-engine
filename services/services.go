@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-kratos/kratos/v2/registry"
+	"github.com/uopensail/recgo-engine/ab"
 	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/strategy"
@@ -30,7 +31,7 @@ type Services struct {
 
 func NewServices() *Services {
 	srv := Services{}
-
+	ab.ABClient = ab.InitABClient(config.AppConfigInstance.ABConfig)
 	return &srv
 }
 func (srv *Services) Init(configFolder string, etcdName string, etcdCli *etcdclient.Client, reg utils.Register) {
@@ -61,5 +62,5 @@ func (srv *Services) Watch(*grpc_health_v1.HealthCheckRequest, grpc_health_v1.He
 }
 
 func (srv *Services) Close() {
-
+	ab.ABClient.Close()
 }

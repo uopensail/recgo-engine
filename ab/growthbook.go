@@ -18,7 +18,7 @@ type GrowthBookSDK struct {
 func newGrowthBookSDK(sdkConfig config.GrowthBookSDKConfig) *GrowthBookSDK {
 	var opts []gb.ClientOption
 	opts = append(opts, gb.WithSseDataSource())
-	opts = append(opts, gb.WithClientKey(sdkConfig.WriteKey))
+	opts = append(opts, gb.WithClientKey(sdkConfig.ClientKey))
 
 	if len(sdkConfig.APIHost) > 0 {
 		opts = append(opts, gb.WithApiHost(sdkConfig.APIHost))

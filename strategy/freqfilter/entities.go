@@ -52,7 +52,7 @@ func BuildFilterEntity(entities *FilterEntities, dbModel *meta.DBTabelModel,
 		return nil
 	}
 	//确认是否命中实验
-	caseValue := uCtx.UserAB.EvalFeatureValue(entityMeta.ABLayerID)
+	caseValue := uCtx.UserAB.AbInfo.EvalFeatureValue(uCtx.Context, entityMeta.ABLayerID)
 	if len(caseValue) > 0 {
 		//查找实验变体
 		relateID, err := strconv.Atoi(caseValue)

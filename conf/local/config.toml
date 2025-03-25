@@ -5,8 +5,15 @@ http_port = 3528
 prome_port = 3529
 pprof_port = 3530
 debug = true
-[dbmodel]
+
+[engine_data]
 url = "mock/data/enginedata"
+[ab]
+type = "growthbook"
+[ab.growthbook]
+api_host = "https://cdn.growthbook.io"
+client_key = "sdk-j3GcBo9yPzfDxFsA"
+
 [env]
 work_dir = "/data/data/recgo-engine"
 [env.finder]
