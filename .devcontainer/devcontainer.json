@@ -1,0 +1,17 @@
+{
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {},
+  "postCreateCommand": "go mod tidy",
+  
+	// Configure tool-specific properties.
+	"customizations": {
+		"codespaces": {
+			"repositories": {
+			  "uopensail/*": {
+				"permissions": "write-all"
+			  }
+			}
+		}
+	}
+  
+}
