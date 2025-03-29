@@ -40,7 +40,7 @@ func BuildCondition(ress *Resource, collection Collection, condition string) *Co
 	return c
 }
 
-func (c *Condition) Check(features sample.Features, collection Collection) Collection {
+func (c *Condition) Check(uFeat sample.Features, collection Collection) Collection {
 	stat := prome.NewStat("Condition.Check")
 	defer stat.End()
 	var slice []unsafe.Pointer
@@ -49,7 +49,7 @@ func (c *Condition) Check(features sample.Features, collection Collection) Colle
 
 	slices := make([][]unsafe.Pointer, 0, len(collection))
 	slice = c.evaluator.Allocate()
-	c.evaluator.Fill(features, slice)
+	c.evaluator.Fill(uFeat, slice)
 	address := make([]uintptr, len(slice))
 	for i := 0; i < len(slice); i++ {
 		address[i] = uintptr(slice[i])

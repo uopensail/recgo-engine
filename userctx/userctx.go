@@ -83,12 +83,12 @@ type UserContext struct {
 	UserFeatures
 	UserAB
 	UserFilter
-	ApiRequest *recapi.RecRequest
+	ApiRequest *recapi.RecRequestWrapper
 
 	RelateItem *pool.Features
 }
 
-func NewUserContext(ctx context.Context, apiReq *recapi.RecRequest,
+func NewUserContext(ctx context.Context, apiReq *recapi.RecRequestWrapper,
 
 	ress *resources.Resource,
 	subPoolID int,
@@ -102,10 +102,10 @@ func NewUserContext(ctx context.Context, apiReq *recapi.RecRequest,
 		Ress:         ress,
 		FilterRess:   fress,
 	}
-	uFeat := converUserTFeature(uCtx.UID(), apiReq)
-	uCtx.UserAB = NewUserAB(ctx, uCtx.UID(), uFeat)
+
+	uCtx.UserAB = NewUserAB(ctx, uCtx.UID(), apiReq.UFeat)
 	//初始化用户特征
-	uCtx.UserFeatures.UFeat = uFeat
+	uCtx.UserFeatures.UFeat = apiReq.UFeat
 	//tran
 
 	if uCtx.ApiRequest != nil {
@@ -135,7 +135,7 @@ func (uCtx *UserContext) initUserFilter(subPool *SubPool) {
 		}
 	}
 
-	uCtx.UserFilter = *newUserFilter(excludeList, subPool, uCtx.Ress, uCtx.ApiRequest.FilterCondition)
+	uCtx.UserFilter = *newUserFilter(excludeList, subPool, uCtx.Ress, uCtx.ApiRequest.StaticFilterCondition)
 
 }
 func UID(apiReq *recapi.RecRequest) string {

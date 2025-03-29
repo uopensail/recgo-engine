@@ -25,15 +25,15 @@ message RecRequest {
   int32 count = 4;                                // 请求的数量
   string relate_item = 5;                         // 相关推荐：详情页的商品id
   string trace_id = 6;                            // 请求id
-  string  scene =7;                             //频道tab标识
-  string pipeline = 8;                          //通道策略id
+  string  scene_name =7;                             //频道tab标识
+  string strategy_pipeline = 8;                          //通道策略id
   repeated string exclude_items = 9;
   map<string, Feature> user_feature = 10;
-  string filter_condition = 11;             //静态过滤条件
+  string static_filter_condition = 11;             //静态过滤条件
 }
 
 message RecResult {
-  string expids = 1;                              // 实验id列表, 用","分割
+  string rec_info = 1;                              // 实验id列表, 用","分割
   string user_id = 2;                             // 用户ID
   string device_id = 3;                           // 设备 ID
   string trace_id = 4;                            // 请求id

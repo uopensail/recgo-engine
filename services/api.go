@@ -17,13 +17,18 @@ import (
 )
 
 func (srv *Services) Recommend(ctx context.Context, in *recapi.RecRequest) (*recapi.RecResponse, error) {
-	stat := prome.NewStat("HomeRecommend")
+	stat := prome.NewStat("GRPC.HomeRecommend")
 	defer stat.End()
 	entities := strategy.EntitiesMgr.GetEntities()
 	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*100)
 	defer cancel()
 
-	recResult, err := srv.feedDefaultRec(ctx, in, &entities.ModelEntities)
+	inWrapper := recapi.RecRequestWrapper{
+		RecRequest: in,
+		FieldsType: entities.Ress.FieldDataType,
+	}
+	inWrapper.FromRecRequest(in)
+	recResult, err := srv.feedDefaultRec(ctx, &inWrapper, &entities.ModelEntities)
 	if err != nil {
 		return nil, err
 	}
@@ -44,11 +49,14 @@ func (srv *Services) Recommend(ctx context.Context, in *recapi.RecRequest) (*rec
 // @Failure 400 {object} model.StatusResponse
 // @Router /rec [post]
 func (srv *Services) RecommendHandler(gCtx *gin.Context) {
-	pStat := prome.NewStat("RecommendHandler")
+	pStat := prome.NewStat("HTTP.RecommendHandler")
 	defer pStat.End()
+	entities := strategy.EntitiesMgr.GetEntities()
+	ctx, cancel := context.WithTimeout(gCtx.Request.Context(), time.Millisecond*100)
+	defer cancel()
 
-	var postData recapi.RecRequest
-	if err := gCtx.ShouldBind(&postData); err != nil {
+	var postData recapi.RecRequestWrapper
+	if err := gCtx.ShouldBindJSON(&postData); err != nil {
 		gCtx.JSON(http.StatusInternalServerError, model.StatusResponse{
 			Code: -1,
 			Msg:  err.Error(),
@@ -56,7 +64,8 @@ func (srv *Services) RecommendHandler(gCtx *gin.Context) {
 		return
 	}
 
-	ret, err := srv.Recommend(context.Background(), &postData)
+	ret, err := srv.feedDefaultRec(ctx, &postData, &entities.ModelEntities)
+
 	if err != nil {
 		gCtx.JSON(http.StatusInternalServerError, model.StatusResponse{
 			Code: -1,
@@ -74,7 +83,7 @@ func (srv *Services) UsrCtxInfoHandler(gCtx *gin.Context) {
 	pStat := prome.NewStat("UsrCtxInfo")
 	defer pStat.End()
 
-	var postData recapi.RecRequest
+	var postData recapi.RecRequestWrapper
 	if err := gCtx.ShouldBind(&postData); err != nil {
 		gCtx.JSON(http.StatusInternalServerError, model.StatusResponse{
 			Code: -1,

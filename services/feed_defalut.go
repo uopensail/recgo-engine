@@ -15,10 +15,10 @@ import (
 	"github.com/uopensail/ulib/zlog"
 )
 
-func (srv *Services) feedDefaultRec(ctx context.Context, in *recapi.RecRequest, entities *strategy.ModelEntities) (*recapi.RecResult, error) {
+func (srv *Services) feedDefaultRec(ctx context.Context, in *recapi.RecRequestWrapper, entities *strategy.ModelEntities) (*recapi.RecResult, error) {
 
 	//do strategy
-	istrategy := entities.StrategyEntities.GetStrategy(in.Pipeline)
+	istrategy := entities.StrategyEntities.GetStrategy(in.StrategyPipeline)
 	if istrategy != nil {
 		strategyMeta := istrategy.Meta()
 
@@ -70,7 +70,7 @@ func reportLogsdk(uCtx *userctx.UserContext, recRes *recapi.RecResult) {
 
 	var expStr buffer.Buffer
 
-	expStr.WriteString(recRes.Expids)
+	expStr.WriteString(recRes.RecInfo)
 
 	//TODO:
 

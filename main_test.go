@@ -26,9 +26,9 @@ func Test_main(t *testing.T) {
 	cli := recapi.NewRecServiceClient(conn)
 	time.Sleep(time.Second * 1)
 	fmt.Println(cli.Recommend(context.Background(), &recapi.RecRequest{
-		UserId:   "",
-		Count:    10,
-		Pipeline: "home",
+		UserId:           "",
+		Count:            10,
+		StrategyPipeline: "home",
 		UserFeature: map[string]*recapi.Feature{
 			"u_d_click_list": {
 				Type: int32(sample.StringsType),
