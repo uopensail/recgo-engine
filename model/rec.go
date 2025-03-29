@@ -42,7 +42,9 @@ func (f *ItemFeatures) Get(key string) sample.Feature {
 func (f *ItemFeatures) Set(key string, value sample.Feature) {
 	f.MutFeature.Set(key, value)
 }
-
+func (f *ItemFeatures) MapAny() map[string]any {
+	return f.Source.Feats.MapAny()
+}
 func (f *ItemFeatures) MarshalJSON() ([]byte, error) {
 	feats := sample.NewMutableFeatures()
 	keys := f.Source.Feats.Keys()
