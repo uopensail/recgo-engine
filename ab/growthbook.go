@@ -72,9 +72,8 @@ func newGrowthBookABInfo(client *gb.Client, id string, feature *sample.MutableFe
 	if client == nil {
 		return &GrowthBookABInfo{}
 	}
-
-	attrs := gb.Attributes{"id": id}
-
+	attrs := feature.MapAny()
+	attrs["id"] = id
 	child, err := client.WithAttributes(attrs)
 	if err != nil {
 		log.Fatal("Child client creation failed: ", err)

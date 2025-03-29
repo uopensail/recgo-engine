@@ -11,12 +11,13 @@ require (
 	github.com/go-kratos/kratos/v2 v2.7.0
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/growthbook/growthbook-golang v0.2.1
+	github.com/segmentio/analytics-go v3.1.0+incompatible
 	github.com/spf13/cast v1.5.1
 	github.com/swaggo/files v0.0.0-20210815190702-a29dd2bc99b2
 	github.com/swaggo/gin-swagger v1.4.3
 	github.com/tidwall/gjson v1.17.0
 	github.com/uopensail/kongming-sdk-go v0.0.2
-	github.com/uopensail/ulib v0.0.21-0.20250301111407-dfaa888cc074
+	github.com/uopensail/ulib v0.0.21-0.20250329064132-b03f28b79850
 	go.etcd.io/etcd/client/v3 v3.5.9
 	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842
@@ -82,7 +83,6 @@ require (
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect
-	github.com/segmentio/analytics-go v3.1.0+incompatible // indirect
 	github.com/segmentio/backo-go v1.1.0 // indirect
 	github.com/swaggo/swag v1.8.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
