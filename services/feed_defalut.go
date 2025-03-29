@@ -49,6 +49,7 @@ func (srv *Services) feedDefaultRec(ctx context.Context, in *recapi.RecRequestWr
 		}
 		zlog.SLOG.Debug("api request response ", uCtx.ApiRequest, &ret)
 		//推荐数据埋点
+		ret.RecInfo = uCtx.AbInfo.HitInfo()
 		go reportLogsdk(uCtx, &ret)
 		return &ret, nil
 	} else {

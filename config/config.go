@@ -5,14 +5,15 @@ import (
 	"io/ioutil"
 
 	"github.com/BurntSushi/toml"
+
 	"github.com/uopensail/kongming-sdk-go/sdkcore"
+
 	"github.com/uopensail/ulib/commonconfig"
 )
 
 type EngineDataConfig struct {
 	URL string `toml:"url"`
 }
-
 type GrowthBookSDKConfig struct {
 	APIHost   string `toml:"api_host"`
 	ClientKey string `toml:"client_key"`
@@ -29,7 +30,28 @@ type AppConfig struct {
 	commonconfig.ServerConfig `toml:"server"`
 	EnvConfig                 `toml:"env"`
 	ABConfig                  `toml:"ab"`
+	ReportConfig              `toml:"report"`
 }
+type SegmentConfig struct {
+	Endpoint string `json:"endpoint" toml:"endpoint"`
+	WriteKey string `json:"write_key" toml:"write_key"`
+}
+
+type SLSLogConfig struct {
+	Endpoint string `json:"endpoint" toml:"endpoint"`
+	AK       string `json:"ak" toml:"ak"`
+	SK       string `json:"sk" toml:"sk"`
+	RAM      string `json:"ram" toml:"ram"`
+	Project  string `json:"project" toml:"project"`
+	LogStore string `json:"logstore" toml:"logstore"`
+	Region   string `json:"region" toml:"region"`
+}
+type ReportConfig struct {
+	Type          string `json:"type" toml:"type"`
+	SegmentConfig `json:"segment" toml:"segment"`
+	SLSLogConfig  `json:"slslog" toml:"slslog"`
+}
+
 type EnvConfig struct {
 	Finder  commonconfig.FinderConfig `json:"finder" toml:"finder"`
 	WorkDir string                    `json:"work_dir" toml:"work_dir"`

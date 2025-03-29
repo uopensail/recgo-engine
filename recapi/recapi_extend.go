@@ -2,6 +2,7 @@ package recapi
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/bytedance/sonic"
 	"github.com/uopensail/ulib/sample"
@@ -111,4 +112,16 @@ func (d *RecRequestWrapper) UnmarshalJSON(data []byte) error {
 		}
 	}
 	return nil
+}
+
+func (res *RecResult) ToMap() map[string]string {
+	ret := make(map[string]string)
+	ret["user_id"] = res.UserId
+	ret["device_id"] = res.DeviceId
+	ret["trace_id"] = res.TraceId
+	ret["rec_info"] = res.RecInfo
+	ret["items"] = strings.Join(res.Items, ",")
+	ret["items_trace"] = strings.Join(res.ItemsTrace, ",")
+	return ret
+
 }

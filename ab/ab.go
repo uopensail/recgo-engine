@@ -9,6 +9,7 @@ import (
 
 type ABInfo interface {
 	EvalFeatureValue(ctx context.Context, featureKey string) string
+	HitInfo() string
 }
 
 type ABCli interface {

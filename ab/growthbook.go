@@ -2,9 +2,12 @@ package ab
 
 import (
 	"context"
+	"encoding/json"
 	"log"
+	"strconv"
 
 	gb "github.com/growthbook/growthbook-golang"
+
 	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/ulib/sample"
 	"github.com/uopensail/ulib/zlog"
@@ -48,6 +51,7 @@ func (gbSDK *GrowthBookSDK) Close() {
 
 type GrowthBookABInfo struct {
 	childCli *gb.Client
+	hitInfo  map[string]map[string]string
 }
 
 func (ab *GrowthBookABInfo) EvalFeatureValue(ctx context.Context, featureKey string) string {
@@ -57,16 +61,37 @@ func (ab *GrowthBookABInfo) EvalFeatureValue(ctx context.Context, featureKey str
 	featureValue := ab.childCli.EvalFeature(ctx, featureKey)
 	return featureValue.Value.(string)
 }
+func (ab *GrowthBookABInfo) HitInfo() string {
+	data, err := json.Marshal(ab.hitInfo)
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
 func newGrowthBookABInfo(client *gb.Client, id string, feature *sample.MutableFeatures) *GrowthBookABInfo {
 	if client == nil {
 		return &GrowthBookABInfo{}
 	}
-	//TODO: feature toattrs
+
 	attrs := gb.Attributes{"id": id}
 
 	child, err := client.WithAttributes(attrs)
 	if err != nil {
 		log.Fatal("Child client creation failed: ", err)
 	}
-	return &GrowthBookABInfo{child}
+	abInfo := &GrowthBookABInfo{childCli: child,
+		hitInfo: make(map[string]map[string]string)}
+
+	child, err = client.WithExperimentCallback(func(ctx context.Context, exp *gb.Experiment, result *gb.ExperimentResult, a any) {
+		hitInfo := make(map[string]string)
+		hitInfo["experimentId"] = result.Key
+		hitInfo["variationId"] = strconv.Itoa(result.VariationId)
+		hitInfo["featureKey"] = result.FeatureId
+		abInfo.hitInfo[result.FeatureId] = hitInfo
+	})
+	if err != nil {
+		log.Fatal("Child client creation failed: ", err)
+	}
+
+	return abInfo
 }

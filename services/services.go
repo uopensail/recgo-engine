@@ -8,6 +8,7 @@ import (
 	"github.com/uopensail/recgo-engine/ab"
 	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/recgo-engine/recapi"
+	"github.com/uopensail/recgo-engine/report"
 	"github.com/uopensail/recgo-engine/strategy"
 	"github.com/uopensail/recgo-engine/utils"
 	etcdclient "go.etcd.io/etcd/client/v3"
@@ -27,11 +28,13 @@ type Services struct {
 	etcdCli *etcdclient.Client
 
 	instance registry.ServiceInstance
+	report   report.IReport
 }
 
 func NewServices() *Services {
 	srv := Services{}
 	ab.ABClient = ab.InitABClient(config.AppConfigInstance.ABConfig)
+	srv.report = report.NewReport(config.AppConfigInstance.ReportConfig)
 	return &srv
 }
 func (srv *Services) Init(configFolder string, etcdName string, etcdCli *etcdclient.Client, reg utils.Register) {
