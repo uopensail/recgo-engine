@@ -4,7 +4,7 @@ grpc_port = 3527
 http_port = 3528
 prome_port = 3529
 pprof_port = 3530
-debug = true
+debug = false
 
 [engine_data]
 url = "mock/data/enginedata"

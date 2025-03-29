@@ -16,7 +16,6 @@ all: dev
 
 clean:
 	rm -rf ${PUBLISHDIR}/
-	mkdir -pv ${PUBLISHDIR}/conf
 
 build: clean
 	go build -o ${PUBLISHDIR}/${PROJECT_NAME} $(GOFLAGS)
