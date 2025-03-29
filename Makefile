@@ -21,19 +21,19 @@ clean:
 build: clean
 	go build -o ${PUBLISHDIR}/${PROJECT_NAME} $(GOFLAGS)
 
-docker-image: build
+build-docker-image: build
+	mv dist/recgo-engine dist/main
 	docker build \
 		--build-arg GIT_HASH=$(GITCOMMITHASH) \
 		--build-arg GIT_TAG=$(GITBRANCHNAME) \
 		--build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
-		-t registry.uopensail.com/${PROJECT_NAME}:${GITBRANCHNAME}-${GITCOMMITHASH} \
-		-t registry.uopensail.com/${PROJECT_NAME}:latest \
+		-t $(ACR_CONTAINER_REGISTRY_SERVER)/uopensail/${PROJECT_NAME}:${GITBRANCHNAME}-${GITCOMMITHASH} \
+		-t $(ACR_CONTAINER_REGISTRY_SERVER)/uopensail/${PROJECT_NAME}:latest \
 		.
 
-docker-image-push: docker-image
-	echo "$(DOCKER_REGISTRY_PASSWORD)" | docker login registry.uopensail.com -u $(DOCKER_REGISTRY_USER) --password-stdin
-	docker push registry.uopensail.com/${PROJECT_NAME}:${GIT_TAG}-${GIT_HASH}
-	docker push registry.uopensail.com/${PROJECT_NAME}:latest
+push-docker-image: build-docker-image
+	docker push $(ACR_CONTAINER_REGISTRY_SERVER)/uopensail/${PROJECT_NAME}:${GITBRANCHNAME}-${GITCOMMITHASH}
+	docker push $(ACR_CONTAINER_REGISTRY_SERVER)/uopensail/${PROJECT_NAME}:latest
 
 pre: build
 	cp -aRf conf/$@/* ${PUBLISHDIR}/conf

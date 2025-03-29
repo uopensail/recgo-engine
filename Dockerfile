@@ -12,4 +12,4 @@ RUN mkdir -pv /data/logs/
 RUN mkdir -pv /app/conf
 COPY dist /app
 WORKDIR /app
-ENTRYPOINT [ "/app/recgo-engine" ]
+ENTRYPOINT [ "/app/main" ]
