@@ -5,7 +5,6 @@ ARCH = $(shell go env GOARCH)
 
 GITCOMMITHASH := $(shell git rev-parse --short=7 HEAD)
 GITBRANCHNAME := $(shell git symbolic-ref -q --short HEAD || git describe --tags --exact-match)
-GIT_TAG := $(shell  git describe --tags --abbrev=0 2>/dev/null || echo "untagged")
 
 GOLDFLAGS += -X handler.__GITCOMMITINFO__=$(GITCOMMITHASH).${GITBRANCHNAME}
 GOFLAGS = -ldflags "$(GOLDFLAGS)"
@@ -23,12 +22,11 @@ build: clean
 	go build -o ${PUBLISHDIR}/${PROJECT_NAME} $(GOFLAGS)
 
 docker-image: build
-	docker build -t ${PROJECT_NAME}:$@ .
 	docker build \
-		--build-arg GIT_HASH=$GIT_HASH \
-		--build-arg GIT_TAG=$GIT_TAG \
+		--build-arg GIT_HASH=$(GITCOMMITHASH) \
+		--build-arg GIT_TAG=$(GITBRANCHNAME) \
 		--build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
-		-t registry.uopensail.com/${PROJECT_NAME}:${GIT_TAG}-${GIT_HASH} \
+		-t registry.uopensail.com/${PROJECT_NAME}:${GITBRANCHNAME}-${GITCOMMITHASH} \
 		-t registry.uopensail.com/${PROJECT_NAME}:latest \
 		.
 
