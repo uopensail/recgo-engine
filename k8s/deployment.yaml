@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recgo-engine
+  namespace: uopensail
+  labels:
+    app: recgo-engine
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: recgo-engine
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: recgo-engine
+    spec:
+      containers:
+      - name: golang-app
+        image: your-registry.example.com/dev/golang-app:latest
+        args: ["--conf=/app/config/app-config.toml"]
+
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: app-config
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+      volumes:
+      - name: config-volume
+        configMap:
+          name: app-config  # 引用上面定义的 ConfigMap
+          items:
+          - key: app-config.toml  # ConfigMap 中的键
+            path: app-config.toml  # 容器内的文件名
+      imagePullSecrets:
+      - name: regcred  # 引用私有仓库凭证

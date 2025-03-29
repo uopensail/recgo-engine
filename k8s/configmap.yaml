@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: recgo-engine-config
+  namespace: uopensail
+data:
+  config.toml: |
+    [server]
+    project_name = "recgo_engine"
+    grpc_port = 8081
+    http_port = 8080
+    prome_port = 9100
+    pprof_port = 9101
+    debug = false
+
+    [engine_data]
+    url = "mock/data/enginedata"
+    [ab]
+    type = "growthbook"
+    [ab.growthbook]
+    api_host = "https://cdn.growthbook.io"
+    client_key = "sdk-j3GcBo9yPzfDxFsA"
+
+    [env]
+    work_dir = "/data/data/recgo-engine"
+    [env.finder]
+    type = "local"
