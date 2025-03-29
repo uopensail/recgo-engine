@@ -34,18 +34,18 @@ type EntitiesManager struct {
 	entities *Entities
 }
 
-func (mgr *EntitiesManager) Init(envCfg config.EnvConfig, jobUtil *utils.MetuxJobUtil) {
+func (mgr *EntitiesManager) Init(envCfg config.EnvConfig, dataURL string, jobUtil *utils.MetuxJobUtil) {
 	mgr.entities = &Entities{}
 
-	mgr.cronJob(envCfg, jobUtil)
+	mgr.cronJob(envCfg, dataURL, jobUtil)
 }
 func (mgr *EntitiesManager) GetEntities() *Entities {
 	entities := (*Entities)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&mgr.entities))))
 	return entities
 }
 
-func (mgr *EntitiesManager) cronJob(envCfg config.EnvConfig, jobUtil *utils.MetuxJobUtil) {
-	job, err := mgr.loadAllJob(envCfg)
+func (mgr *EntitiesManager) cronJob(envCfg config.EnvConfig, dataURL string, jobUtil *utils.MetuxJobUtil) {
+	job, err := mgr.loadAllJob(envCfg, dataURL)
 	if err != nil {
 		zlog.LOG.Error("loadAllJob", zap.Error(err))
 		panic(err)
@@ -58,7 +58,7 @@ func (mgr *EntitiesManager) cronJob(envCfg config.EnvConfig, jobUtil *utils.Metu
 		defer ticker.Stop()
 		for {
 			<-ticker.C
-			job, err := mgr.loadAllJob(envCfg)
+			job, err := mgr.loadAllJob(envCfg, dataURL)
 			if err != nil {
 				zlog.LOG.Error("loadAllJob", zap.Error(err))
 				continue
@@ -99,10 +99,10 @@ func (mgr *EntitiesManager) findLatestEngineDataDir(envCfg config.EnvConfig, loc
 			if (strings.HasPrefix(dirName, fileNamePrefix)) == false {
 				continue
 			}
-			// 检查对应.lock目录是否存在
-			lockPath := filepath.Join(parentDir, dirName+".lock")
-			if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
-				continue // 存在.lock目录则跳过
+			// 检查对应.success
+			lockPath := filepath.Join(parentDir, dirName+".success")
+			if _, err := os.Stat(lockPath); os.IsNotExist(err) {
+				continue // 存在.success目录则跳过
 			}
 			vv := strings.Split(dirName, ".")
 			if len(vv) != 2 {
@@ -122,9 +122,9 @@ func (mgr *EntitiesManager) findLatestEngineDataDir(envCfg config.EnvConfig, loc
 }
 
 // Do not modify the execution order
-func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig) (func(), error) {
+func (mgr *EntitiesManager) loadAllJob(envCfg config.EnvConfig, url string) (func(), error) {
 
-	engineDataDir, version, err := mgr.findLatestEngineDataDir(envCfg, config.AppConfigInstance.URL)
+	engineDataDir, version, err := mgr.findLatestEngineDataDir(envCfg, url)
 	if err != nil {
 		zlog.LOG.Error("LoadDBTabelModel", zap.Error(err))
 		return nil, err

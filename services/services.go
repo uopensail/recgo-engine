@@ -37,7 +37,7 @@ func NewServices() *Services {
 func (srv *Services) Init(configFolder string, etcdName string, etcdCli *etcdclient.Client, reg utils.Register) {
 	srv.etcdCli = etcdCli
 	jobUtil := utils.NewMetuxJobUtil(etcdName, reg, etcdCli, 10, -1)
-	strategy.EntitiesMgr.Init(config.AppConfigInstance.EnvConfig, jobUtil)
+	strategy.EntitiesMgr.Init(config.AppConfigInstance.EnvConfig, config.AppConfigInstance.URL, jobUtil)
 
 }
 func (srv *Services) RegisterGrpc(grpcS *grpc.Server) {

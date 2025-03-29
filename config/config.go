@@ -20,8 +20,8 @@ type GrowthBookSDKConfig struct {
 
 type ABConfig struct {
 	Type                      string `toml:"type"`
-	sdkcore.KongMingSDKConfig `toml:"kongming_ab"`
-	GrowthBookSDKConfig       `toml:"growthbook_ab"`
+	sdkcore.KongMingSDKConfig `toml:"kongming"`
+	GrowthBookSDKConfig       `toml:"growthbook"`
 }
 
 type AppConfig struct {
