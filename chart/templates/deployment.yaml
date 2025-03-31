@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "recgo-engine.fullname" . }}
+  name: {{ include "recgo_engine.fullname" . }}
   labels:
-    {{- include "recgo-engine.labels" . | nindent 4 }}
+    {{- include "recgo_engine.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "recgo-engine.selectorLabels" . | nindent 6 }}
+      {{- include "recgo_engine.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -18,27 +18,15 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "recgo-engine.selectorLabels" . | nindent 8 }}
+        {{- include "recgo_engine.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "recgo-engine.serviceAccountName" . }}
+      serviceAccountName: {{ include "recgo_engine.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      initContainers:
-        # Wait for MongoDB
-        - name: wait-db
-          image: jwilder/dockerize
-          # We don't care about having latest...
-          imagePullPolicy: IfNotPresent
-          command:
-            - sh
-            - -c
-            - dockerize -timeout=120s -wait tcp://${MONGODB_HOST}:${MONGODB_PORT}
-          env:
-            {{- include "recgo-engine.mongo.env" . | nindent 12 }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -49,19 +37,19 @@ spec:
             exec:
               command:
               - bash
-              - /usr/local/src/recgo-engine-helm/livenessprobe-exec.sh
+              - /usr/local/src/recgo_engine-helm/livenessprobe-exec.sh
             initialDelaySeconds: 30
             periodSeconds: 5
           env:
-            {{- range $key, $value := .Values.recgo-engine.extraEnvVars }}
+            {{- range $key, $value := .Values.recgo_engine.extraEnvVars }}
             - name: {{ $key }}
               value: |-
                 {{- tpl $value $ | nindent 16 }}
             {{- end }}
           volumeMounts:
-            - name: {{ include "recgo-engine.fullname" . }}-livenessprobe-exec
-              mountPath: /usr/local/src/recgo-engine-helm
-            - name: {{ include "recgo-engine.fullname" . }}
+            - name: {{ include "recgo_engine.fullname" . }}-livenessprobe-exec
+              mountPath: /usr/local/src/recgo_engine-helm
+            - name: {{ include "recgo_engine.fullname" . }}
               mountPath: {{ .Values.volume.mountPath }}
           ports:
             - name: api-http-port
@@ -75,11 +63,8 @@ spec:
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
       volumes:
-        - name: {{ include "recgo-engine.fullname" . }}-livenessprobe-exec
-          configMap:
-            name: {{ include "recgo-engine.fullname" . }}-livenessprobe-exec
-        - name: {{ include "recgo-engine.fullname" . }}
-          {{ include "recgo-engine.pvc" . }}
+        - name: {{ include "recgo_engine.fullname" . }}
+          {{ include "recgo_engine.pvc" . }}
       {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}

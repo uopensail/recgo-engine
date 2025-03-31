@@ -14,7 +14,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "recgo-engine.fullname" . }}
+                name: {{ include "recgo_engine.fullname" . }}
                 port:
                   number: {{ .Values.port.apiHTTPPort }}
   tls:

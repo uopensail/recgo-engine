@@ -2,14 +2,14 @@
 apiVersion: autoscaling/v2beta1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "recgo-engine.fullname" . }}
+  name: {{ include "recgo_engine.fullname" . }}
   labels:
-    {{- include "recgo-engine.labels" . | nindent 4 }}
+    {{- include "recgo_engine.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "recgo-engine.fullname" . }}
+    name: {{ include "recgo_engine.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

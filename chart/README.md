@@ -1,8 +1,8 @@
-# recgo-engine
+# recgo_engine
 
 ![Version: 0.1.16](https://img.shields.io/badge/Version-0.1.16-informational?style=flat-square)
 
-A Helm chart for recgo-engine
+A Helm chart for recgo_engine
 
 ## Maintainers
 
@@ -14,11 +14,11 @@ A Helm chart for recgo-engine
 
 ## TL;DR;
 
-[recgo-engine](https://www.recgo-engine.io/) is an open-source remote configuration / activation flag service.
+[recgo_engine](https://www.recgo_engine.io/) is an open-source remote configuration / activation flag service.
 
 ```console
 $ helm repo add one-acre-fund https://one-acre-fund.github.io/oaf-public-charts
-$ helm install my-release one-acre-fund/recgo-engine
+$ helm install my-release one-acre-fund/recgo_engine
 ```
 
 ## Requirements
@@ -38,27 +38,27 @@ $ helm install my-release one-acre-fund/recgo-engine
 | autoscaling.targetCPUUtilizationPercentage | int | `80` |  |
 | autoscaling.targetMemoryUtilizationPercentage | int | `80` |  |
 | fullnameOverride | string | `""` |  |
-| recgo-engine.extraEnvVars.API_HOST | string | `"https://api-recgo-engine.uopensail.com:443"` |  |
-| recgo-engine.extraEnvVars.NODE_ENV | string | `"production"` |  |
-| recgo-engine.jwtSecret | string | `"jwtSecretString"` |  |
-| recgo-engine.persistence.accessModes[0] | string | `"ReadWriteMany"` |  |
-| recgo-engine.persistence.enabled | bool | `true` |  |
-| recgo-engine.persistence.storage | string | `"3Gi"` |  |
-| recgo-engine.persistence.type | string | `"emptyDir"` |  |
+| recgo_engine.extraEnvVars.API_HOST | string | `"https://api-recgo_engine.uopensail.com:443"` |  |
+| recgo_engine.extraEnvVars.NODE_ENV | string | `"production"` |  |
+| recgo_engine.jwtSecret | string | `"jwtSecretString"` |  |
+| recgo_engine.persistence.accessModes[0] | string | `"ReadWriteMany"` |  |
+| recgo_engine.persistence.enabled | bool | `true` |  |
+| recgo_engine.persistence.storage | string | `"3Gi"` |  |
+| recgo_engine.persistence.type | string | `"emptyDir"` |  |
 
 | image.pullPolicy | string | `"Always"` |  |
-| image.repository | string | `"recgo-engine/recgo-engine"` |  |
+| image.repository | string | `"recgo_engine/recgo_engine"` |  |
 | image.tag | string | `"latest"` |  |
 | imagePullSecrets | list | `[]` |  |
 | ingress.annotations."kubernetes.io/ingress.class" | string | `"nginx"` |  |
 | ingress.annotations."nginx.ingress.kubernetes.io/cors-allow-headers" | string | `"Authorization,Referer,sec-ch-ua,sec-ch-ua-mobile,sec-ch-ua-platform,User-Agent,X-Organization,Content-Type"` |  |
-| ingress.annotations."nginx.ingress.kubernetes.io/cors-allow-origin" | string | `"https://api-recgo-engine.uopensail.com"` |  |
+| ingress.annotations."nginx.ingress.kubernetes.io/cors-allow-origin" | string | `"https://api-recgo_engine.uopensail.com"` |  |
 | ingress.annotations."nginx.ingress.kubernetes.io/enable-cors" | string | `"true"` |  |
 | ingress.annotations."nginx.ingress.kubernetes.io/force-ssl-redirect" | string | `"true"` |  |
-| ingress.apiHostName | string | `"api-recgo-engine.uopensail.com"` |  |
+| ingress.apiHostName | string | `"api-recgo_engine.uopensail.com"` |  |
 | ingress.enabled | bool | `false` |  |
-| ingress.name | string | `"recgo-engine-ingress"` |  |
-| ingress.secretName | string | `"recgo-engine-tls"` |  |
+| ingress.name | string | `"recgo_engine-ingress"` |  |
+| ingress.secretName | string | `"recgo_engine-tls"` |  |
 | nameOverride | string | `""` |  |
 | nodeSelector | object | `{}` |  |
 | port.apiHTTPPort | int | `8080` |  |

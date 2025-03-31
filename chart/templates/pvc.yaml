@@ -1,22 +1,22 @@
-{{- if and .Values.recgo-engine.persistence.enabled (not .Values.recgo-engine.persistence.existingClaim) }}
+{{- if and .Values.recgo_engine.persistence.enabled (not .Values.recgo_engine.persistence.existingClaim) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "recgo-engine.fullname" . }}
+  name: {{ include "recgo_engine.fullname" . }}
 spec:
   accessModes:
-    {{- range .Values.recgo-engine.persistence.accessModes }}
+    {{- range .Values.recgo_engine.persistence.accessModes }}
     - {{ . | quote }}
     {{- end }}
-  {{- if .Values.recgo-engine.persistence.storageClass }}
-  {{- if eq "-" .Values.recgo-engine.persistence.storageClassName }}
+  {{- if .Values.recgo_engine.persistence.storageClass }}
+  {{- if eq "-" .Values.recgo_engine.persistence.storageClassName }}
   storageClassName: ""
   {{- else }}
-  storageClassName: {{ .Values.recgo-engine.persistence.storageClassName }}
+  storageClassName: {{ .Values.recgo_engine.persistence.storageClassName }}
   {{- end }}
   {{- end }}
   volumeMode: Filesystem
   resources:
     requests:
-      storage: {{ .Values.recgo-engine.persistence.storage }}
+      storage: {{ .Values.recgo_engine.persistence.storage }}
 {{- end }}
