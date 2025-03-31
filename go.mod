@@ -16,8 +16,8 @@ require (
 	github.com/swaggo/files v0.0.0-20210815190702-a29dd2bc99b2
 	github.com/swaggo/gin-swagger v1.4.3
 	github.com/tidwall/gjson v1.17.0
-	github.com/uopensail/kongming-sdk-go v0.0.2
-	github.com/uopensail/ulib v0.0.21-0.20250329064132-b03f28b79850
+	github.com/uopensail/kongming-sdk-go v0.0.3-0.20250331003549-6d2a8c36ca8a
+	github.com/uopensail/ulib v0.0.21-0.20250331003130-169929e8f2c8
 	go.etcd.io/etcd/client/v3 v3.5.9
 	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842
