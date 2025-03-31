@@ -7,10 +7,10 @@ data:
   config.toml: |
     [server]
     project_name = "recgo_engine"
-    grpc_port = 8081
-    http_port = 8080
-    prome_port = 9100
-    pprof_port = 9101
+    grpc_port = {{ .Values.server.grpc_port }}
+    http_port = {{ .Values.server.http_port }}
+    prome_port = {{ .Values.server.prome_port }}
+    pprof_port = {{ .Values.server.pprof_port }}
     debug = false
 
     [engine_data]

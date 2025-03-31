@@ -15,10 +15,22 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-port:
-  apiHTTPPort: 8080
-  apiGRPCPort: 8081
-  promePort: 8082
+config:
+  server:
+    project_name: recgo_engine
+    http_port: 8080
+    grpc_port: 8081
+    prome_port: 8082
+    pprof_port: 8083
+  ab:
+    type: growthbook
+    growthbook:
+      api_host: "https://cdn.growthbook.io"
+      client_key: "sdk-j3GcBo9yPzfDxFsA"
+  env:
+    work_dir: "/data/data/recgo-engine"
+    finder:
+      type: "local"
 
 serviceAccount:
   # Specifies whether a service account should be created
