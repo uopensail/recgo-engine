@@ -1,0 +1,24 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.ingress.name }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  rules:
+    - host: {{ .Values.ingress.apiHostName }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "recgo-engine.fullname" . }}
+                port:
+                  number: {{ .Values.port.apiHTTPPort }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.apiHostName }}
+      secretName: {{ .Values.ingress.secretName }}
+{{- end -}}
