@@ -1,153 +1,123 @@
 package userctx
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"time"
 
-	"github.com/uopensail/recgo-engine/model/dbmodel"
+	"github.com/uopensail/recgo-engine/model"
 	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/resources"
-	fresource "github.com/uopensail/recgo-engine/strategy/freqfilter/resource"
-	"github.com/uopensail/ulib/pool"
+	"github.com/uopensail/ulib/sample"
 )
 
-type SubPool struct {
-	collection resources.Collection
-}
-type WhiteList struct {
-	Set map[int]struct{}
+type Request struct {
+	UserId string `json:"user_id"`
 }
 
-func NewWhitList(cs ...resources.Collection) *WhiteList {
-	wh := WhiteList{}
-	for _, c := range cs {
-		for _, id := range c {
-			wh.Set[id] = struct{}{}
-		}
-	}
-	return &wh
-}
-
-type UserFilter struct {
-	excludeCollection resources.Collection //黑明单
-
-	whiteList *WhiteList
-}
-
-func newUserFilter(excludeList resources.Collection, subPool *SubPool, ress *resources.Resource, condition string) *UserFilter {
-	userFilter := UserFilter{
-		excludeCollection: excludeList,
-	}
-	var apiFilterStaticCollection resources.Collection
-	if subPool != nil {
-		if len(condition) != 0 {
-			apiFilterStaticCollection = resources.BuildCollection(ress, subPool.collection, condition)
-			userFilter.whiteList = NewWhitList(apiFilterStaticCollection)
-		} else {
-			userFilter.whiteList = NewWhitList(subPool.collection)
-		}
-	} else {
-		if len(condition) != 0 {
-			apiFilterStaticCollection = resources.BuildCollection(ress, ress.Pool.WholeCollection, condition)
-			userFilter.whiteList = NewWhitList(apiFilterStaticCollection)
-		}
-		//不设置白名单,那么全部通过
-	}
-
-	return &userFilter
-}
-
-// true:表示合法,Pass false: 不合法
-func (filter *UserFilter) Check(id int) bool {
-	if resources.BinarySearch(filter.excludeCollection, id) {
-		return false
-	}
-	//如果不设置，那么全部通过，比如没有subpool&&也没有conditon
-	if filter.whiteList == nil {
-		return true
-	}
-	//判断是否在子集中 如果在白名单子集中，那么代表合法
-	if _, ok := filter.whiteList.Set[id]; !ok {
-		return false
-	}
-	return true
+type Response struct {
+	Code int                     `json:"code"`
+	Msg  string                  `json:"msg"`
+	Data *sample.MutableFeatures `json:"data"`
 }
 
 type UserContext struct {
 	context.Context
-
-	*dbmodel.DBTabelModel // 配置引用
-	Ress                  *resources.Resource
-	SubPool               *SubPool
-	FilterRess            *fresource.Resources
-
-	UserFeatures
-	UserAB
-	UserFilter
-	ApiRequest *recapi.RecRequestWrapper
-
-	RelateItem *pool.Features
+	Request  *recapi.Request
+	Items    *model.Items
+	Filter   model.IFliter
+	Features *sample.MutableFeatures
+	Related  *sample.ImmutableFeatures
 }
 
-func NewUserContext(ctx context.Context, apiReq *recapi.RecRequestWrapper,
-
-	ress *resources.Resource,
-	subPoolID int,
-	dbModel *dbmodel.DBTabelModel,
-	fress *fresource.Resources) *UserContext {
+func NewUserContext(ctx context.Context, req *recapi.Request) *UserContext {
+	items := resources.ResourceManagerInstance.GetItems()
+	var related *sample.ImmutableFeatures
+	if len(req.RelateId) > 0 {
+		id, feas := items.GetByKey(req.RelateId)
+		if id >= 0 {
+			related = feas
+		}
+	}
 
 	uCtx := UserContext{
-		Context:      ctx,
-		ApiRequest:   apiReq,
-		DBTabelModel: dbModel,
-		Ress:         ress,
-		FilterRess:   fress,
+		Context:  ctx,
+		Request:  req,
+		Items:    items,
+		Filter:   nil,
+		Features: nil,
+		Related:  related,
 	}
 
-	uCtx.UserAB = NewUserAB(ctx, uCtx.UID(), apiReq.UFeat)
-	//初始化用户特征
-	uCtx.UserFeatures.UFeat = apiReq.UFeat
-	//tran
-
-	if uCtx.ApiRequest != nil {
-		uCtx.RelateItem = ress.Pool.GetByKey(uCtx.ApiRequest.RelateItem)
+	var features *sample.MutableFeatures
+	features = uCtx.fetchFeatures()
+	if features == nil {
+		features = sample.NewMutableFeatures()
 	}
 
-	var subPool *SubPool
-	subCollection, ok := uCtx.Ress.SubPoolCollectionRess.SubPool[subPoolID]
-	if ok {
-		subPool = &SubPool{
-			collection: subCollection,
-		}
-		uCtx.SubPool = subPool
+	merge := func(key string, feature sample.Feature) error {
+		features.Set(key, feature)
+		return nil
 	}
-	uCtx.initUserFilter(uCtx.SubPool)
+	uCtx.Request.Featues.ForEach(merge)
+	uCtx.Request.Context.ForEach(merge)
+	uCtx.Features = features
+
 	return &uCtx
 }
 
-func (uCtx *UserContext) initUserFilter(subPool *SubPool) {
-	var excludeList resources.Collection
-
-	if uCtx.ApiRequest != nil {
-		excludeList = make(resources.Collection, len(uCtx.ApiRequest.ExcludeItems))
-		for i := 0; i < len(uCtx.ApiRequest.ExcludeItems); i++ {
-			item := uCtx.Ress.Pool.GetByKey(uCtx.ApiRequest.ExcludeItems[i])
-			excludeList = append(excludeList, item.ID)
-		}
+func (uCtx *UserContext) fetchFeatures() *sample.MutableFeatures {
+	client := &http.Client{
+		Timeout: 30 * time.Second, // 设置超时时间
+		Transport: &http.Transport{
+			MaxIdleConns:        100,              // 最大空闲连接数
+			MaxIdleConnsPerHost: 10,               // 每个主机的最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时时间
+		},
 	}
 
-	uCtx.UserFilter = *newUserFilter(excludeList, subPool, uCtx.Ress, uCtx.ApiRequest.StaticFilterCondition)
-
-}
-func UID(apiReq *recapi.RecRequest) string {
-	if len(apiReq.UserId) > 0 {
-		return apiReq.UserId
+	reqest := Request{
+		UserId: uCtx.Request.UserId,
 	}
-	return apiReq.DeviceId
-}
-
-func (uCtx *UserContext) UID() string {
-	if len(uCtx.ApiRequest.UserId) > 0 {
-		return uCtx.ApiRequest.UserId
+	data, err := json.Marshal(reqest)
+	if err != nil {
+		// fmt.Errorf("JSON序列化失败: %v", err)
+		return nil
 	}
-	return uCtx.ApiRequest.DeviceId
+
+	// 创建请求
+	req, err := http.NewRequest("POST", "/user", bytes.NewBuffer(data))
+	if err != nil {
+		// fmt.Errorf("创建请求失败: %v", err)
+		return nil
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	// 发送请求
+	response, err := client.Do(req)
+	if err != nil {
+		// fmt.Errorf("发送请求失败: %v", err)
+		return nil
+	}
+
+	// 读取响应体
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		// fmt.Errorf("读取响应失败: %v", err)
+		return nil
+	}
+
+	resp := Response{}
+	// 解析JSON响应
+	if err := json.Unmarshal(body, &resp); err != nil {
+		// fmt.Errorf("JSON反序列化失败: %v", err)
+		return nil
+	}
+	return resp.Data
 }

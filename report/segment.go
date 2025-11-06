@@ -1,6 +1,8 @@
 package report
 
 import (
+	"encoding/json"
+
 	"github.com/segmentio/analytics-go"
 
 	"github.com/uopensail/recgo-engine/config"
@@ -20,15 +22,18 @@ func NewSegmentReport(cfg config.SegmentConfig) *SegmentReport {
 	return &SegmentReport{cli: client}
 }
 
-func (report *SegmentReport) Report(uCtx *userctx.UserContext, recRes *recapi.RecResult) error {
+func (report *SegmentReport) Report(uCtx *userctx.UserContext, resp *recapi.Response) error {
 	if report.cli != nil {
 		protpies := analytics.NewProperties()
-		recReportMap := recRes.ToMap()
-		for k, v := range recReportMap {
-			protpies.Set(k, v)
+		data, err := json.Marshal(resp)
+		if err != nil {
+			return err
 		}
+
+		protpies.Set("data", data)
+
 		report.cli.Enqueue(analytics.Track{
-			UserId: recRes.UserId,
+			UserId: uCtx.Request.UserId,
 			Event:  "rec_dist",
 		})
 	}

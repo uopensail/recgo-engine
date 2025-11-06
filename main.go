@@ -9,7 +9,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"path"
 	"syscall"
 	"time"
 
@@ -27,7 +26,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/uopensail/recgo-engine/config"
+	"github.com/uopensail/recgo-engine/resources"
 	"github.com/uopensail/recgo-engine/services"
+	"github.com/uopensail/recgo-engine/strategy"
 	"github.com/uopensail/ulib/prome"
 	"github.com/uopensail/ulib/zlog"
 	etcdclient "go.etcd.io/etcd/client/v3"
@@ -110,35 +111,35 @@ func (reg *kratosAppRegister) Deregister(ctx context.Context) error {
 
 func run(configFilePath string, logDir string) *services.Services {
 	config.AppConfigInstance.Init(configFilePath)
-	folder := path.Dir(configFilePath)
+	resources.ResourceManagerInstance = resources.NewResourceManager(&config.AppConfigInstance)
+	strategy.StrategyInstance = strategy.NewStrategy(&config.AppConfigInstance)
+	// folder := path.Dir(configFilePath)
 	zlog.InitLogger(config.AppConfigInstance.ProjectName, config.AppConfigInstance.Debug, logDir)
 
-	var etcdCli *etcdclient.Client
-	if len(config.AppConfigInstance.ServerConfig.Endpoints) > 0 {
-		client, err := etcdclient.New(etcdclient.Config{
-			Endpoints: config.AppConfigInstance.ServerConfig.Endpoints,
-		})
-		if err != nil {
-			zlog.LOG.Fatal("etcd error", zap.Error(err))
-		} else {
-			etcdCli = client
-		}
-	}
+	// var etcdCli *etcdclient.Client
+	// if len(config.AppConfigInstance.ServerConfig.Endpoints) > 0 {
+	// 	client, err := etcdclient.New(etcdclient.Config{
+	// 		Endpoints: config.AppConfigInstance.ServerConfig.Endpoints,
+	// 	})
+	// 	if err != nil {
+	// 		zlog.LOG.Fatal("etcd error", zap.Error(err))
+	// 	} else {
+	// 		etcdCli = client
+	// 	}
+	// }
 
 	options := make([]kratos.Option, 0)
 
 	serverName := config.AppConfigInstance.ServerConfig.Name
 	services := services.NewServices()
-	grpcSrv := newGRPC(services.RegisterGrpc)
+
 	httpSrv := newHTTPServe(services.RegisterGinRouter)
 
 	options = append(options, kratos.Name(serverName), kratos.Version(__GITCOMMITINFO__), kratos.Server(
 		httpSrv,
-		grpcSrv,
 	))
 	appReg := kratosAppRegister{}
 	options = append(options, kratos.BeforeStart(func(ctx context.Context) error {
-		services.Init(folder, "microservices/"+serverName, etcdCli, &appReg)
 		return nil
 	}))
 

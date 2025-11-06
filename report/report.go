@@ -7,7 +7,7 @@ import (
 )
 
 type IReport interface {
-	Report(uCtx *userctx.UserContext, recRes *recapi.RecResult) error
+	Report(uCtx *userctx.UserContext, recRes *recapi.Response) error
 	Close()
 }
 

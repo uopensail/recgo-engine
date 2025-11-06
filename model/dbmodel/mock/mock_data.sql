@@ -1,5 +1,0 @@
-INSERT INTO `sunmao`.`pool` (`primary_field`, `name`, `params`, `status`, `location`) VALUES ('d_s_id', 'test_item', '{}', '1', 'oss://uopensail-test/test/sunmao/items.tfrecord');
-INSERT INTO `sunmao`.`recall_source` (`plugin_name`, `name`, `params`, `status`, `source`) VALUES ('file', 'file_test', '{}', '1', '{\"location\":\"oss://uopensail-test/test/sunmao/file.json\"}');
-INSERT INTO `sunmao`.`recal_entity` (`ab_layer_id`, `plugin_name`, `name`, `params`, `status`, `source_id`, `content_source_id`, `index_name`, `merge_name`, `count`) VALUES ('1', 'default', 'test_match', '{\n    \"key\": \"potted plant\"\n}', '1', '100000', '1000', 'd_s_labels', 'concat', '100');
-INSERT INTO `sunmao`.`recall_group_entity` (`id`, `ab_layer_id`, `name`, `params`, `status`, `match_entitys`) VALUES ('1', '2', 'test_group', '{}', '1', '[1]');
-INSERT INTO `sunmao`.`strategy_entity` (`id`, `ab_layer_id`, `plugin_name`, `name`, `params`, `status`, `filter_group_entity_id`, `match_group_entity_id`, `rank_entity_id`, `weighted_entity_id`, `layout_entity_id`) VALUES ('1', '3', 'default', 'test_strategy', '{}', '1', '0', '1', '0', '0', '0');

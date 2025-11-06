@@ -1,6 +1,7 @@
 package report
 
 import (
+	"encoding/json"
 	"os"
 	"time"
 
@@ -39,23 +40,25 @@ func NewSLSLogReport(cfg config.SLSLogConfig) *SLSLogReport {
 	return &SLSLogReport{p: producerInstance, cfg: cfg}
 }
 
-func (report *SLSLogReport) Report(uCtx *userctx.UserContext, recRes *recapi.RecResult) error {
-	recReportMap := recRes.ToMap()
-
-	contents := make([]*sls.LogContent, 0, len(recReportMap))
-	for k, v := range recReportMap {
-		contents = append(contents, &sls.LogContent{
-			Key:   proto.String(k),
-			Value: proto.String(v),
-		})
+func (report *SLSLogReport) Report(uCtx *userctx.UserContext, resp *recapi.Response) error {
+	data, err := json.Marshal(resp)
+	if err != nil {
+		return err
 	}
 
-	report.p.SendLog(report.cfg.Project, report.cfg.LogStore, "rec_dist", os.Getenv("HOST"),
+	contents := []*sls.LogContent{
+		{
+			Key:   proto.String("data"),       // 使用proto.String包装
+			Value: proto.String(string(data)), // 转换为string并用proto.String包装
+		},
+	}
+
+	err = report.p.SendLog(report.cfg.Project, report.cfg.LogStore, "rec_dist", os.Getenv("HOST"),
 		&sls.Log{
 			Time:     proto.Uint32(uint32(time.Now().Unix())),
 			Contents: contents,
 		})
-	return nil
+	return err
 }
 func (report *SLSLogReport) Close() {
 	if report.p != nil {

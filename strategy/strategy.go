@@ -1,65 +1,118 @@
 package strategy
 
 import (
-	"strconv"
+	"fmt"
 
+	"github.com/spaolacci/murmur3"
+	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/recgo-engine/model"
-	"github.com/uopensail/recgo-engine/model/dbmodel"
-	"github.com/uopensail/recgo-engine/model/dbmodel/table"
-	"github.com/uopensail/recgo-engine/resources"
-	"github.com/uopensail/recgo-engine/strategy/freqfilter"
-	fresource "github.com/uopensail/recgo-engine/strategy/freqfilter/resource"
-	"github.com/uopensail/recgo-engine/strategy/insert"
-	"github.com/uopensail/recgo-engine/strategy/rank"
-	"github.com/uopensail/recgo-engine/strategy/recalls/recall"
-
-	"github.com/uopensail/recgo-engine/strategy/scatter"
-	"github.com/uopensail/recgo-engine/strategy/weighted"
+	"github.com/uopensail/recgo-engine/pipeline"
+	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/userctx"
+	"github.com/uopensail/ulib/sample"
 )
 
-const (
-	DefalutStrategy = "default"
-)
-
-type ModelEntities struct {
-	Model dbmodel.DBTabelModel // 配置引用
-
-	FilterResources fresource.Resources
-	Ress            resources.Resource
-
-	freqfilter.FilterEntities
-	recall.RecallEntities
-	scatter.ScatterEntities
-	insert.InsertEntities
-	rank.RankEntities
-	weighted.WeightedEntities
-	StrategyEntities
+type Strategy struct {
+	feeds           map[string]pipeline.IPipeline
+	related         map[string]pipeline.IPipeline
+	feedsBuckets    []pipeline.IPipeline
+	releatedBuckets []pipeline.IPipeline
 }
 
-type IStrategyEntity interface {
-	Do(uCtx *userctx.UserContext) (model.StageResult, error)
-	Meta() *table.StrategyEntityMeta
-}
-
-func BuildRuntimeEntity(entities *ModelEntities, uCtx *userctx.UserContext, entityMeta *table.StrategyEntityMeta) IStrategyEntity {
-
-	//确认是否命中实验
-	caseValue := uCtx.UserAB.AbInfo.EvalFeatureValue(uCtx.Context, entityMeta.ABLayerID)
-	if len(caseValue) > 0 {
-		//查找实验变体
-		relateID, err := strconv.Atoi(caseValue)
-		//abEntiy := Entities.Model.ABEntityTableModel.Get(int(expInfo.CaseId))
-		if err == nil {
-			//替换entiyMeta
-			expMeta := entities.Model.StrategyEntityTableModel.Get(relateID)
-			if expMeta != nil {
-				entityMeta = expMeta
-			}
+func NewStrategy(conf *config.AppConfig) *Strategy {
+	feeds := make(map[string]pipeline.IPipeline, len(conf.Feeds))
+	for _, pconf := range conf.Feeds {
+		p := pipeline.NewPipeline(&pconf)
+		if p != nil {
+			feeds[pconf.Name] = p
 		}
 	}
-	cacheEntity := entities.StrategyEntities.GetStrategy(entityMeta.Name)
+	related := make(map[string]pipeline.IPipeline, len(conf.Related))
+	for _, pconf := range conf.Related {
+		p := pipeline.NewPipeline(&pconf)
+		if p != nil {
+			related[pconf.Name] = p
+		}
+	}
 
-	return BuildRuntimeDefaultStrategyEntity(cacheEntity, entities, uCtx)
+	feedsBuckets := make([]pipeline.IPipeline, 100)
+	for _, p := range feeds {
+		for _, idx := range p.GetBuckets() {
+			feedsBuckets[idx] = p
+		}
+	}
+	releatedBuckets := make([]pipeline.IPipeline, 100)
+	for _, p := range related {
+		for _, idx := range p.GetBuckets() {
+			releatedBuckets[idx] = p
+		}
+	}
 
+	if len(feeds) == 0 || len(related) == 0 {
+		panic(fmt.Errorf("build strategy fail"))
+	}
+
+	return &Strategy{feeds: feeds, related: related, feedsBuckets: feedsBuckets, releatedBuckets: releatedBuckets}
 }
+
+func (s *Strategy) Feeds(uCtx *userctx.UserContext) *recapi.Response {
+	h := murmur3.New64()
+	h.Write([]byte(uCtx.Request.UserId))
+	p := s.feedsBuckets[h.Sum64()%100]
+	if p == nil {
+		panic(fmt.Errorf("no pipeline hit"))
+	}
+	collection := p.Do(uCtx)
+	resp := &recapi.Response{
+		TraceId:  uCtx.Request.TraceId,
+		UserId:   uCtx.Request.UserId,
+		Pipeline: p.GetName(),
+	}
+	resp.Items = make([]*recapi.ItemInfo, 0, len(collection))
+	var fea sample.Feature
+	for _, entry := range collection {
+		fea, _ = entry.Get(model.ChannelsKey)
+		channels, _ := fea.GetStrings()
+		fea, _ = entry.Get(model.ReasonsKey)
+		reasopns, _ := fea.GetStrings()
+
+		resp.Items = append(resp.Items, &recapi.ItemInfo{
+			Item:     entry.Key,
+			Channels: channels,
+			Reasons:  reasopns,
+		})
+	}
+	return resp
+}
+
+func (s *Strategy) Related(uCtx *userctx.UserContext) *recapi.Response {
+	h := murmur3.New64()
+	h.Write([]byte(uCtx.Request.UserId))
+	p := s.releatedBuckets[h.Sum64()%100]
+	if p == nil {
+		panic(fmt.Errorf("no pipeline hit"))
+	}
+	collection := p.Do(uCtx)
+	resp := &recapi.Response{
+		TraceId:  uCtx.Request.TraceId,
+		UserId:   uCtx.Request.UserId,
+		Pipeline: p.GetName(),
+	}
+	resp.Items = make([]*recapi.ItemInfo, 0, len(collection))
+	var fea sample.Feature
+	for _, entry := range collection {
+		fea, _ = entry.Get(model.ChannelsKey)
+		channels, _ := fea.GetStrings()
+		fea, _ = entry.Get(model.ReasonsKey)
+		reasopns, _ := fea.GetStrings()
+
+		resp.Items = append(resp.Items, &recapi.ItemInfo{
+			Item:     entry.Key,
+			Channels: channels,
+			Reasons:  reasopns,
+		})
+	}
+	return resp
+}
+
+var StrategyInstance *Strategy
