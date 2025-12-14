@@ -1,53 +1,93 @@
-CURDIR:=$(shell pwd)
-OS = $(shell go env GOOS)
-ARCH = $(shell go env GOARCH)
-.PHONY: build clean run
+# ================================
+# Project variables
+# ================================
+CURDIR       := $(shell pwd)
+OS           := $(shell go env GOOS)
+ARCH         := $(shell go env GOARCH)
+PROJECT_NAME := recgo-engine
+PUBLISHDIR   := $(CURDIR)/dist
 
-GITCOMMITHASH := $(shell git rev-parse --short=7 HEAD)
-GITBRANCHNAME := $(shell git symbolic-ref -q --short HEAD || git describe --tags --exact-match)
+# ================================
+# Git build metadata
+# ================================
+GITCOMMIT    := $(shell git rev-parse --short=7 HEAD)
+GITBRANCH    := $(shell git symbolic-ref -q --short HEAD || git describe --tags --exact-match)
+BUILD_TIME   := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-GOLDFLAGS += -X handler.__GITCOMMITINFO__=$(GITCOMMITHASH).${GITBRANCHNAME}
-GOFLAGS = -ldflags "$(GOLDFLAGS)"
+# ================================
+# Go build flags
+# Inject git info & build time into main.go variables
+# ================================
+GOLDFLAGS    := -X main.gitCommitInfo=$(GITCOMMIT).$(GITBRANCH) -X main.buildTime=$(BUILD_TIME)
+GOFLAGS      := -ldflags "$(GOLDFLAGS)"
 
-PUBLISHDIR=${CURDIR}/dist
-PROJECT_NAME=recgo-engine
+# ================================
+# Docker registry (optional)
+# ================================
+DOCKER_REGISTRY ?= $(ACR_CONTAINER_REGISTRY_SERVER)/uopensail
 
+.PHONY: all clean build run docker-build docker-push \
+        pre prod dev test local
+
+# ================================
+# Default target
+# ================================
 all: dev
 
+# ================================
+# Clean build artifacts
+# ================================
 clean:
-	rm -rf ${PUBLISHDIR}/
+	rm -rf $(PUBLISHDIR)
 
+# ================================
+# Build binary
+# ================================
 build: clean
-	go build -o ${PUBLISHDIR}/${PROJECT_NAME} $(GOFLAGS)
+	@mkdir -p $(PUBLISHDIR)
+	go build -o $(PUBLISHDIR)/$(PROJECT_NAME) $(GOFLAGS)
 
-build-docker-image: build
-	mv dist/recgo-engine dist/main
+# ================================
+# Run locally (build & execute)
+# ================================
+run: build
+	cd $(PUBLISHDIR) && ./$(PROJECT_NAME)
+
+# ================================
+# Environment builds (pre/prod/dev/test/local)
+# Will copy config files and run.sh script to dist/
+# ================================
+pre: ENV=pre
+prod: ENV=prod
+dev: ENV=dev
+test: ENV=test
+local: ENV=local
+
+pre prod dev test local: build
+	@mkdir -p $(PUBLISHDIR)/conf
+	@if [ ! -d "conf/$(ENV)" ]; then \
+		echo "ERROR: Config directory conf/$(ENV) does not exist."; \
+		exit 1; \
+	fi
+	cp -aRf conf/$(ENV)/* $(PUBLISHDIR)/conf
+	cp run.sh $(PUBLISHDIR)/
+
+# ================================
+# Build Docker image
+# ================================
+docker-build: build
+	@mv $(PUBLISHDIR)/$(PROJECT_NAME) $(PUBLISHDIR)/main
 	docker build \
-		--build-arg GIT_HASH=$(GITCOMMITHASH) \
-		--build-arg GIT_TAG=$(GITBRANCHNAME) \
-		--build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
-		-t $(ACR_CONTAINER_REGISTRY_SERVER)/uopensail/${PROJECT_NAME}:${GITBRANCHNAME}-${GITCOMMITHASH} \
-		-t $(ACR_CONTAINER_REGISTRY_SERVER)/uopensail/${PROJECT_NAME}:latest \
-		.
+		--build-arg GIT_HASH=$(GITCOMMIT) \
+		--build-arg GIT_TAG=$(GITBRANCH) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
+		-t $(DOCKER_REGISTRY)/$(PROJECT_NAME):$(GITBRANCH)-$(GITCOMMIT) \
+		-t $(DOCKER_REGISTRY)/$(PROJECT_NAME):latest \
+		$(PUBLISHDIR)
 
-push-docker-image: build-docker-image
-	docker push $(ACR_CONTAINER_REGISTRY_SERVER)/uopensail/${PROJECT_NAME}:${GITBRANCHNAME}-${GITCOMMITHASH}
-	docker push $(ACR_CONTAINER_REGISTRY_SERVER)/uopensail/${PROJECT_NAME}:latest
-
-pre: build
-	cp -aRf conf/$@/* ${PUBLISHDIR}/conf
-	cp run.sh ${PUBLISHDIR}/
-
-prod: build
-	cp -aRf conf/$@/* ${PUBLISHDIR}/conf
-	cp run.sh ${PUBLISHDIR}/
-
-dev: build
-	cp -aRf conf/$@/* ${PUBLISHDIR}/conf
-	cp run.sh ${PUBLISHDIR}/
-test: build
-	cp -aRf conf/$@/* ${PUBLISHDIR}/conf
-	cp run.sh ${PUBLISHDIR}/
-local: build
-	cp -aRf conf/$@/* ${PUBLISHDIR}/conf
-	cd dist && ./${PROJECT_NAME}
+# ================================
+# Push Docker image
+# ================================
+docker-push: docker-build
+	docker push $(DOCKER_REGISTRY)/$(PROJECT_NAME):$(GITBRANCH)-$(GITCOMMIT)
+	docker push $(DOCKER_REGISTRY)/$(PROJECT_NAME):latest

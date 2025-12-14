@@ -10,34 +10,24 @@ import (
 	"time"
 
 	"github.com/uopensail/recgo-engine/model"
+	"github.com/uopensail/ulib/prome"
 	"github.com/uopensail/ulib/zlog"
 	"go.uber.org/zap"
 )
 
+const (
+	// FinderCheckInterval defines how often (in seconds) the Finder will check for updated resources.
+	FinderCheckInterval = 300 // 5 minutes
+)
+
 /**
- * @brief Finds the directory with the latest timestamp that contains a SUCCESS file
+ * FindLatestSuccessDir finds the directory with the latest numeric timestamp that contains a SUCCESS file.
  *
- * This function searches through subdirectories of the given directory path,
- * where each subdirectory name is expected to be a numeric timestamp (integer).
- * It returns the path of the subdirectory with the highest timestamp value
- * that also contains a file named "SUCCESS".
+ * This function scans all subdirectories under `dir`, where each subdirectory name must be a numeric timestamp.
+ * Only directories containing a file named "SUCCESS" are considered valid.
  *
- * @param dir The root directory path to search in
- * @return The path of the latest directory containing SUCCESS file, empty string if not found
- * @return Error if directory doesn't exist, can't be read, or no valid directory found
- *
- * @note Only directories with numeric names (parseable as int64) are considered
- * @note The SUCCESS file must exist directly in the timestamp directory
- *
- * @example
- * @code
- * latestDir, err := FindLatestSuccessDir("/data/jobs")
- * if err != nil {
- *     log.Printf("Error: %v", err)
- * } else {
- *     fmt.Printf("Latest SUCCESS directory: %s", latestDir)
- * }
- * @endcode
+ * @param dir Root directory to scan.
+ * @return Path to the latest valid directory, or error if none found.
  */
 func FindLatestSuccessDir(dir string) (string, error) {
 	// Check if the root directory exists
@@ -54,102 +44,106 @@ func FindLatestSuccessDir(dir string) (string, error) {
 	var latestTimestamp int64 = -1
 	var latestDir string
 
-	// Iterate through all entries
 	for _, entry := range entries {
-		// Only process directories
 		if !entry.IsDir() {
 			continue
 		}
 
 		dirName := entry.Name()
 
-		// Try to parse directory name as timestamp (integer)
+		// Parse directory name as timestamp (int64)
 		timestamp, err := strconv.ParseInt(strings.TrimSpace(dirName), 10, 64)
 		if err != nil {
-			// Skip if directory name is not a valid integer
 			continue
 		}
 
-		// Build the full path of the subdirectory
 		subDirPath := filepath.Join(dir, dirName)
-
-		// Check if SUCCESS file exists in this directory
 		successFilePath := filepath.Join(subDirPath, "SUCCESS")
+
+		// Check if SUCCESS file exists
 		if _, err := os.Stat(successFilePath); err != nil {
-			// SUCCESS file doesn't exist, skip this directory
 			continue
 		}
 
-		// Update record if this is the latest timestamp found so far
+		// Update if this timestamp is newer
 		if timestamp > latestTimestamp {
 			latestTimestamp = timestamp
 			latestDir = subDirPath
 		}
 	}
 
-	// Return error if no valid directory was found
 	if latestDir == "" {
-		return "", fmt.Errorf("no timestamp directory with SUCCESS file found")
+		return "", fmt.Errorf("no timestamp directory with SUCCESS file found in %s", dir)
 	}
 
 	return latestDir, nil
 }
 
+// Finder monitors a directory for the latest timestamp-based resources.
 type Finder struct {
-	dir        string // Directory to monitor for timestamp subdirectories
-	interval   int    // Check interval in seconds
+	dir        string // Root directory containing timestamp subdirectories
 	creator    func(string) (model.Resource, error)
-	stopCh     chan struct{} // Channel to stop the monitoring goroutine
-	isWatching atomic.Bool   // Flag to indicate if monitoring is active
+	stopCh     chan struct{}
+	isWatching atomic.Bool
 	resource   atomic.Value
 }
 
+// NewFinder creates a new Finder, initializes it with the latest resource, and starts watching.
+//
+// @param dir Directory to monitor.
+// @param creator Function to load a resource from a given path.
+// @return Finder instance or error if initialization fails.
 func NewFinder(dir string, creator func(string) (model.Resource, error)) (*Finder, error) {
-	zlog.LOG.Info("Finder: creating new helper", zap.String("dir", dir))
+	pStat := prome.NewStat("NewFinder")
+	defer pStat.End()
 
-	filePath, err := FindLatestSuccessDir(dir)
+	zlog.LOG.Info("Finder: creating new instance", zap.String("dir", dir))
+
+	latestDir, err := FindLatestSuccessDir(dir)
 	if err != nil {
-		zlog.LOG.Error("Finder: failed to find latest success directory during initialization",
+		pStat.MarkErr()
+		zlog.LOG.Error("Finder: failed to find latest SUCCESS directory",
 			zap.String("dir", dir),
 			zap.Error(err))
 		return nil, err
 	}
 
-	resource, err := creator(dir)
+	// Load initial resource using latest SUCCESS path
+	resource, err := creator(latestDir)
 	if err != nil {
-		zlog.LOG.Error("Finder: failed to load resource during initialization",
-			zap.String("file_path", filePath),
-			zap.String("dir", dir),
+		pStat.MarkErr()
+		zlog.LOG.Error("Finder: failed to load initial resource",
+			zap.String("latest_dir", latestDir),
 			zap.Error(err))
 		return nil, err
 	}
 
-	finder := &Finder{
-		dir:      dir,
-		stopCh:   make(chan struct{}), // Initialize the channel
-		interval: interval,
-		creator:  creator,
+	f := &Finder{
+		dir:     dir,
+		creator: creator,
+		stopCh:  make(chan struct{}),
 	}
 
-	finder.resource.Store(resource)
+	f.resource.Store(resource)
 
-	zlog.LOG.Info("Finder: successfully created helper",
+	zlog.LOG.Info("Finder: initialized successfully",
 		zap.String("dir", dir),
-		zap.String("initial_file_path", filePath),
-		zap.Int("interval_seconds", interval))
+		zap.String("initial_latest_dir", latestDir),
+		zap.Int("interval_seconds", FinderCheckInterval))
 
-	finder.start()
-	return finder, nil
+	f.start()
+	return f, nil
 }
 
+// Get returns the current loaded resource.
 func (f *Finder) Get() model.Resource {
 	return f.resource.Load().(model.Resource)
 }
 
+// start launches the watch loop if not already running.
 func (f *Finder) start() {
-	// Check if already watching using CAS
 	if !f.isWatching.CompareAndSwap(false, true) {
-		zlog.LOG.Warn("Finder: already watching, ignoring duplicate start request",
+		zlog.LOG.Warn("Finder: already watching, ignoring duplicate start",
 			zap.String("dir", f.dir))
 		return
 	}
@@ -157,57 +151,43 @@ func (f *Finder) start() {
 	go f.watchLoop()
 	zlog.LOG.Info("Finder: started watching directory",
 		zap.String("dir", f.dir),
-		zap.Int("interval_seconds", f.interval))
+		zap.Int("interval_seconds", FinderCheckInterval))
 }
 
-/**
- * @brief Stops the directory monitoring goroutine
- *
- * This method gracefully stops the background monitoring goroutine.
- * It's safe to call multiple times.
- *
- * @note This method is non-blocking
- */
+// Stop gracefully stops the monitoring goroutine.
+// Safe to call multiple times.
 func (f *Finder) Stop() {
 	if f.isWatching.CompareAndSwap(true, false) {
 		close(f.stopCh)
-		zlog.LOG.Info("Finder: stopped watching directory",
-			zap.String("dir", f.dir))
+		zlog.LOG.Info("Finder: stopped watching directory", zap.String("dir", f.dir))
 	} else {
-		zlog.LOG.Debug("InvertedIndexHelper: stop called but not watching",
-			zap.String("dir", f.dir))
+		zlog.LOG.Debug("Finder: stop called but not watching", zap.String("dir", f.dir))
 	}
 }
 
-/**
- * @brief Internal method that runs the directory monitoring loop
- */
+// watchLoop periodically checks for updated resources.
 func (f *Finder) watchLoop() {
-	zlog.LOG.Debug("InvertedIndexHelper: watch loop started", zap.String("dir", f.dir))
-
-	ticker := time.NewTicker(time.Duration(f.interval) * time.Second)
+	zlog.LOG.Debug("Finder: watch loop started", zap.String("dir", f.dir))
+	ticker := time.NewTicker(time.Duration(FinderCheckInterval) * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			zlog.LOG.Debug("InvertedIndexHelper: periodic check triggered", zap.String("dir", f.dir))
+			zlog.LOG.Debug("Finder: periodic check triggered", zap.String("dir", f.dir))
 			f.checkAndUpdate()
 		case <-f.stopCh:
-			zlog.LOG.Debug("InvertedIndexHelper: watch loop stopped", zap.String("dir", f.dir))
+			zlog.LOG.Debug("Finder: watch loop stopped", zap.String("dir", f.dir))
 			return
 		}
 	}
 }
 
-/**
- * @brief Internal method to check for updates and reload resource if necessary
- */
+// checkAndUpdate reloads the resource if a new latest SUCCESS directory appears.
 func (f *Finder) checkAndUpdate() {
-	// Find latest SUCCESS directory
 	latestPath, err := FindLatestSuccessDir(f.dir)
 	if err != nil {
-		zlog.LOG.Error("Finder: failed to find latest success dir",
+		zlog.LOG.Error("Finder: failed to find latest SUCCESS dir",
 			zap.String("dir", f.dir),
 			zap.Error(err))
 		return
@@ -215,9 +195,9 @@ func (f *Finder) checkAndUpdate() {
 
 	current := f.Get()
 	if current != nil {
-		url, err := current.GetURL()
-		if err == nil && url == latestPath {
-			zlog.LOG.Debug("Finder: resource already up to date",
+		url := current.GetURL()
+		if url == latestPath {
+			zlog.LOG.Debug("Finder: resource up-to-date",
 				zap.String("dir", f.dir),
 				zap.String("path", latestPath))
 			return
@@ -233,14 +213,13 @@ func (f *Finder) checkAndUpdate() {
 		return
 	}
 
-	// Atomically update
 	oldPath := "none"
 	if current != nil {
-		oldPath, _ = current.GetURL()
+		oldPath = current.GetURL()
 	}
 
 	f.resource.Store(next)
-	zlog.LOG.Info("Find: successfully updated resource",
+	zlog.LOG.Info("Finder: successfully updated resource",
 		zap.String("dir", f.dir),
 		zap.String("new_path", latestPath),
 		zap.String("old_path", oldPath))
