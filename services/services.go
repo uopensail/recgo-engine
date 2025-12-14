@@ -2,59 +2,107 @@ package services
 
 import (
 	"context"
+	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-kratos/kratos/v2/registry"
-	"github.com/uopensail/recgo-engine/ab"
 	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/report"
 	"github.com/uopensail/recgo-engine/strategy"
-	"github.com/uopensail/recgo-engine/utils"
-	etcdclient "go.etcd.io/etcd/client/v3"
-	"google.golang.org/grpc"
+	"github.com/uopensail/recgo-engine/userctx"
+	"github.com/uopensail/ulib/prome"
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
-type StrategyEntryID int
-
-const (
-	HomeRecommendStrategyEntryID   StrategyEntryID = 0
-	RelateRecommendStrategyEntryID StrategyEntryID = 0
-)
-
+// Services contains service dependencies such as registry instance and report.
 type Services struct {
-	recapi.UnimplementedRecServiceServer
-	etcdCli *etcdclient.Client
-
 	instance registry.ServiceInstance
 	report   report.IReport
 }
 
+// NewServices creates a new Services instance and initializes report.
 func NewServices() *Services {
 	srv := Services{}
-	ab.ABClient = ab.InitABClient(config.AppConfigInstance.ABConfig)
 	srv.report = report.NewReport(config.AppConfigInstance.ReportConfig)
 	return &srv
 }
-func (srv *Services) Init(configFolder string, etcdName string, etcdCli *etcdclient.Client, reg utils.Register) {
-	srv.etcdCli = etcdCli
-	jobUtil := utils.NewMetuxJobUtil(etcdName, reg, etcdCli, 10, -1)
-	strategy.EntitiesMgr.Init(config.AppConfigInstance.EnvConfig, config.AppConfigInstance.URL, jobUtil)
 
-}
-func (srv *Services) RegisterGrpc(grpcS *grpc.Server) {
-	recapi.RegisterRecServiceServer(grpcS, srv)
-	//grpc_health_v1.RegisterHealthServer(grpcS, srv)
-}
-
+// RegisterGinRouter registers HTTP routes for the recommendation API.
 func (srv *Services) RegisterGinRouter(ginEngine *gin.Engine) {
 	apiV1 := ginEngine.Group("api/v1")
 	{
-		apiV1.POST("/home_rec", srv.RecommendHandler)
+		apiV1.POST("/feeds", srv.FeedsHandler)
+		apiV1.POST("/related", srv.RelatedHandler)
 	}
-	ginEngine.POST("/user", srv.UsrCtxInfoHandler)
 }
+
+// FeedsHandler handles feed recommendations requests.
+func (srv *Services) FeedsHandler(gCtx *gin.Context) {
+	pStat := prome.NewStat("HTTP.FeedsHandler")
+	defer pStat.End()
+
+	ctx, cancel := context.WithTimeout(gCtx.Request.Context(), 100*time.Millisecond)
+	defer cancel()
+
+	var req recapi.Request
+	if err := gCtx.ShouldBindJSON(&req); err != nil {
+		gCtx.JSON(http.StatusBadRequest, recapi.Response{
+			Code:    -1,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	uCtx := userctx.NewUserContext(ctx, &req)
+	resp := strategy.StrategyInstance.Feeds(uCtx)
+
+	if resp == nil {
+		gCtx.JSON(http.StatusInternalServerError, recapi.Response{
+			Code:    -1,
+			Message: "internal error: nil response",
+		})
+		return
+	}
+
+	srv.report.Report(uCtx, resp)
+	gCtx.JSON(http.StatusOK, resp)
+}
+
+// RelatedHandler handles related item recommendations requests.
+func (srv *Services) RelatedHandler(gCtx *gin.Context) {
+	pStat := prome.NewStat("HTTP.RelatedHandler")
+	defer pStat.End()
+
+	ctx, cancel := context.WithTimeout(gCtx.Request.Context(), 100*time.Millisecond)
+	defer cancel()
+
+	var req recapi.Request
+	if err := gCtx.ShouldBindJSON(&req); err != nil {
+		gCtx.JSON(http.StatusBadRequest, recapi.Response{
+			Code:    -1,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	uCtx := userctx.NewUserContext(ctx, &req)
+	resp := strategy.StrategyInstance.Related(uCtx)
+
+	if resp == nil {
+		gCtx.JSON(http.StatusInternalServerError, recapi.Response{
+			Code:    -1,
+			Message: "internal error: nil response",
+		})
+		return
+	}
+
+	srv.report.Report(uCtx, resp)
+	gCtx.JSON(http.StatusOK, resp)
+}
+
+// --- gRPC Health Check Implementation ---
 
 func (srv *Services) Check(context.Context, *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
 	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
@@ -65,5 +113,5 @@ func (srv *Services) Watch(*grpc_health_v1.HealthCheckRequest, grpc_health_v1.He
 }
 
 func (srv *Services) Close() {
-	ab.ABClient.Close()
+	// cleanup resources if needed
 }

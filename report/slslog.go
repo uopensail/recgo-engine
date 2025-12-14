@@ -1,6 +1,8 @@
 package report
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 
@@ -14,49 +16,84 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// SLSLogReport implements IReport by sending recommendation logs
+// to Alibaba Cloud's Simple Log Service (SLS) using an asynchronous producer.
 type SLSLogReport struct {
 	cfg config.SLSLogConfig
 	p   *producer.Producer
 }
 
+// NewSLSLogReport creates a new SLSLogReport using the provided configuration.
+// Depending on config.RAM, it uses either RAM role credentials or static AK/SK.
+// The producer is started automatically.
+//
+// Returns nil if the producer cannot be created.
+//
+// Example:
+//
+//	cfg := config.SLSLogConfig{Endpoint: "...", AK: "...", SK: "...", Project: "...", LogStore: "..."}
+//	report := report.NewSLSLogReport(cfg)
+//	defer report.Close()
 func NewSLSLogReport(cfg config.SLSLogConfig) *SLSLogReport {
 	producerConfig := producer.GetDefaultProducerConfig()
 	producerConfig.Endpoint = cfg.Endpoint
-	if len(cfg.RAM) > 0 {
-		provider := sls.NewEcsRamRoleCredentialsProvider(cfg.RAM)
-		producerConfig.CredentialsProvider = provider
+
+	// Set credentials provider
+	if cfg.RAM != "" {
+		producerConfig.CredentialsProvider = sls.NewEcsRamRoleCredentialsProvider(cfg.RAM)
 	} else {
-		provider := sls.NewStaticCredentialsProvider(cfg.AK,
-			cfg.SK, "")
-		producerConfig.CredentialsProvider = provider
+		producerConfig.CredentialsProvider = sls.NewStaticCredentialsProvider(cfg.AK, cfg.SK, "")
 	}
 
+	// Create producer
 	producerInstance, err := producer.NewProducer(producerConfig)
 	if err != nil {
-		zlog.LOG.Error("SLSLogReport", zap.Error(err))
+		zlog.LOG.Error("failed to create SLS producer", zap.Error(err))
+		return nil
 	}
+
 	producerInstance.Start()
 	return &SLSLogReport{p: producerInstance, cfg: cfg}
 }
 
-func (report *SLSLogReport) Report(uCtx *userctx.UserContext, recRes *recapi.RecResult) error {
-	recReportMap := recRes.ToMap()
-
-	contents := make([]*sls.LogContent, 0, len(recReportMap))
-	for k, v := range recReportMap {
-		contents = append(contents, &sls.LogContent{
-			Key:   proto.String(k),
-			Value: proto.String(v),
-		})
+// Report sends the recommendation response to Alibaba Cloud SLS.
+// The data is marshaled into JSON and sent with the key "data".
+// The LogStore and Project come from the config.
+// Host is retrieved from the HOST environment variable.
+//
+// Returns an error if marshalling fails or sending the log fails.
+func (report *SLSLogReport) Report(uCtx *userctx.UserContext, resp *recapi.Response) error {
+	if report == nil || report.p == nil {
+		return fmt.Errorf("SLSLogReport is not initialized")
 	}
 
-	report.p.SendLog(report.cfg.Project, report.cfg.LogStore, "rec_dist", os.Getenv("HOST"),
+	if resp == nil {
+		return fmt.Errorf("nil recommendation response")
+	}
+
+	// Marshal response
+	data, err := json.Marshal(resp)
+	if err != nil {
+		return fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	// Build log contents
+	contents := []*sls.LogContent{
+		{
+			Key:   proto.String("data"),
+			Value: proto.String(string(data)),
+		},
+	}
+
+	// Send log
+	return report.p.SendLog(report.cfg.Project, report.cfg.LogStore, "rec_dist", os.Getenv("HOST"),
 		&sls.Log{
 			Time:     proto.Uint32(uint32(time.Now().Unix())),
 			Contents: contents,
 		})
-	return nil
 }
+
+// Close gracefully shuts down the SLS producer, ensuring any pending logs are flushed.
 func (report *SLSLogReport) Close() {
 	if report.p != nil {
 		report.p.SafeClose()

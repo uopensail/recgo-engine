@@ -1,153 +1,161 @@
 package userctx
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"time"
 
-	"github.com/uopensail/recgo-engine/model/dbmodel"
+	"github.com/uopensail/recgo-engine/model"
 	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/resources"
-	fresource "github.com/uopensail/recgo-engine/strategy/freqfilter/resource"
-	"github.com/uopensail/ulib/pool"
+	"github.com/uopensail/ulib/prome"
+	"github.com/uopensail/ulib/sample"
+	"github.com/uopensail/ulib/zlog"
+	"go.uber.org/zap"
 )
 
-type SubPool struct {
-	collection resources.Collection
-}
-type WhiteList struct {
-	Set map[int]struct{}
+// Request defines the feature fetch request payload for user context creation.
+type Request struct {
+	UserId string `json:"user_id"`
 }
 
-func NewWhitList(cs ...resources.Collection) *WhiteList {
-	wh := WhiteList{}
-	for _, c := range cs {
-		for _, id := range c {
-			wh.Set[id] = struct{}{}
-		}
-	}
-	return &wh
+// Response defines the structure of the feature fetch API response.
+type Response struct {
+	Code int                     `json:"code"`
+	Msg  string                  `json:"msg"`
+	Data *sample.MutableFeatures `json:"data"`
 }
 
-type UserFilter struct {
-	excludeCollection resources.Collection //黑明单
-
-	whiteList *WhiteList
-}
-
-func newUserFilter(excludeList resources.Collection, subPool *SubPool, ress *resources.Resource, condition string) *UserFilter {
-	userFilter := UserFilter{
-		excludeCollection: excludeList,
-	}
-	var apiFilterStaticCollection resources.Collection
-	if subPool != nil {
-		if len(condition) != 0 {
-			apiFilterStaticCollection = resources.BuildCollection(ress, subPool.collection, condition)
-			userFilter.whiteList = NewWhitList(apiFilterStaticCollection)
-		} else {
-			userFilter.whiteList = NewWhitList(subPool.collection)
-		}
-	} else {
-		if len(condition) != 0 {
-			apiFilterStaticCollection = resources.BuildCollection(ress, ress.Pool.WholeCollection, condition)
-			userFilter.whiteList = NewWhitList(apiFilterStaticCollection)
-		}
-		//不设置白名单,那么全部通过
-	}
-
-	return &userFilter
-}
-
-// true:表示合法,Pass false: 不合法
-func (filter *UserFilter) Check(id int) bool {
-	if resources.BinarySearch(filter.excludeCollection, id) {
-		return false
-	}
-	//如果不设置，那么全部通过，比如没有subpool&&也没有conditon
-	if filter.whiteList == nil {
-		return true
-	}
-	//判断是否在子集中 如果在白名单子集中，那么代表合法
-	if _, ok := filter.whiteList.Set[id]; !ok {
-		return false
-	}
-	return true
-}
-
+// UserContext holds all runtime information for recommendation processing.
+// It contains request info, loaded items, filter results, user features and related features (contextual items).
 type UserContext struct {
 	context.Context
-
-	*dbmodel.DBTabelModel // 配置引用
-	Ress                  *resources.Resource
-	SubPool               *SubPool
-	FilterRess            *fresource.Resources
-
-	UserFeatures
-	UserAB
-	UserFilter
-	ApiRequest *recapi.RecRequestWrapper
-
-	RelateItem *pool.Features
+	Request  *recapi.Request
+	Items    *model.Items
+	Filter   model.IFilter
+	Features *sample.MutableFeatures
+	Related  *sample.ImmutableFeatures
 }
 
-func NewUserContext(ctx context.Context, apiReq *recapi.RecRequestWrapper,
+// NewUserContext creates a UserContext from a base context and recommendation API request.
+// It loads item resources, fetches related item features if RelateId is provided,
+// merges request-level features into the context, and fetches remote user features if available.
+func NewUserContext(ctx context.Context, req *recapi.Request) *UserContext {
+	pStat := prome.NewStat("NewUserContext")
+	defer pStat.End()
 
-	ress *resources.Resource,
-	subPoolID int,
-	dbModel *dbmodel.DBTabelModel,
-	fress *fresource.Resources) *UserContext {
+	items := resources.ResourceManagerInstance.GetItems()
+
+	// Load related item features if RelateId is provided
+	var related *sample.ImmutableFeatures
+	if len(req.RelateId) > 0 {
+		id, feas := items.GetByKey(req.RelateId)
+		if id >= 0 {
+			related = feas
+		}
+	}
 
 	uCtx := UserContext{
-		Context:      ctx,
-		ApiRequest:   apiReq,
-		DBTabelModel: dbModel,
-		Ress:         ress,
-		FilterRess:   fress,
+		Context:  ctx,
+		Request:  req,
+		Items:    items,
+		Filter:   nil,
+		Features: nil,
+		Related:  related,
 	}
 
-	uCtx.UserAB = NewUserAB(ctx, uCtx.UID(), apiReq.UFeat)
-	//初始化用户特征
-	uCtx.UserFeatures.UFeat = apiReq.UFeat
-	//tran
-
-	if uCtx.ApiRequest != nil {
-		uCtx.RelateItem = ress.Pool.GetByKey(uCtx.ApiRequest.RelateItem)
+	// Fetch remote user features
+	features := uCtx.fetchFeatures()
+	if features == nil {
+		zlog.LOG.Warn("UserContext.FetchFeaturesEmpty",
+			zap.String("user_id", req.UserId))
+		features = sample.NewMutableFeatures()
 	}
 
-	var subPool *SubPool
-	subCollection, ok := uCtx.Ress.SubPoolCollectionRess.SubPool[subPoolID]
-	if ok {
-		subPool = &SubPool{
-			collection: subCollection,
-		}
-		uCtx.SubPool = subPool
+	// Merge request features and context features into the user feature set
+	merge := func(key string, feature sample.Feature) error {
+		features.Set(key, feature)
+		return nil
 	}
-	uCtx.initUserFilter(uCtx.SubPool)
+	uCtx.Request.Features.ForEach(merge)
+	uCtx.Request.Context.ForEach(merge)
+	uCtx.Features = features
+
+	zlog.LOG.Debug("UserContext.Created",
+		zap.String("user_id", req.UserId),
+		zap.Int("feature_count", features.Len()))
+
 	return &uCtx
 }
 
-func (uCtx *UserContext) initUserFilter(subPool *SubPool) {
-	var excludeList resources.Collection
-
-	if uCtx.ApiRequest != nil {
-		excludeList = make(resources.Collection, len(uCtx.ApiRequest.ExcludeItems))
-		for i := 0; i < len(uCtx.ApiRequest.ExcludeItems); i++ {
-			item := uCtx.Ress.Pool.GetByKey(uCtx.ApiRequest.ExcludeItems[i])
-			excludeList = append(excludeList, item.ID)
-		}
+// fetchFeatures contacts the external user feature service to retrieve user features.
+// Returns nil if the request fails or the response is invalid.
+func (uCtx *UserContext) fetchFeatures() *sample.MutableFeatures {
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     90 * time.Second,
+		},
 	}
 
-	uCtx.UserFilter = *newUserFilter(excludeList, subPool, uCtx.Ress, uCtx.ApiRequest.StaticFilterCondition)
-
-}
-func UID(apiReq *recapi.RecRequest) string {
-	if len(apiReq.UserId) > 0 {
-		return apiReq.UserId
+	reqPayload := Request{
+		UserId: uCtx.Request.UserId,
 	}
-	return apiReq.DeviceId
-}
-
-func (uCtx *UserContext) UID() string {
-	if len(uCtx.ApiRequest.UserId) > 0 {
-		return uCtx.ApiRequest.UserId
+	data, err := json.Marshal(reqPayload)
+	if err != nil {
+		zlog.LOG.Error("UserContext.MarshalRequestFailed",
+			zap.String("user_id", uCtx.Request.UserId),
+			zap.Error(err))
+		return nil
 	}
-	return uCtx.ApiRequest.DeviceId
+
+	// TODO: Replace "/user" with a full URL or configurable endpoint
+	req, err := http.NewRequest("POST", "/user", bytes.NewBuffer(data))
+	if err != nil {
+		zlog.LOG.Error("UserContext.CreateHTTPRequestFailed",
+			zap.String("user_id", uCtx.Request.UserId),
+			zap.Error(err))
+		return nil
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	response, err := client.Do(req)
+	if err != nil {
+		zlog.LOG.Error("UserContext.FetchFeatureHTTPRequestFailed",
+			zap.String("user_id", uCtx.Request.UserId),
+			zap.Error(err))
+		return nil
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		zlog.LOG.Error("UserContext.ReadResponseBodyFailed",
+			zap.String("user_id", uCtx.Request.UserId),
+			zap.Error(err))
+		return nil
+	}
+
+	resp := Response{}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		zlog.LOG.Error("UserContext.UnmarshalResponseFailed",
+			zap.String("user_id", uCtx.Request.UserId),
+			zap.Error(err))
+		return nil
+	}
+	if resp.Data == nil {
+		zlog.LOG.Warn("UserContext.EmptyFeatureResponse",
+			zap.String("user_id", uCtx.Request.UserId),
+			zap.Int("code", resp.Code),
+			zap.String("msg", resp.Msg))
+	}
+
+	return resp.Data
 }

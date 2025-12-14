@@ -1,65 +1,120 @@
 package strategy
 
 import (
-	"strconv"
+	"fmt"
 
+	"github.com/uopensail/recgo-engine/config"
 	"github.com/uopensail/recgo-engine/model"
-	"github.com/uopensail/recgo-engine/model/dbmodel"
-	"github.com/uopensail/recgo-engine/model/dbmodel/table"
-	"github.com/uopensail/recgo-engine/resources"
-	"github.com/uopensail/recgo-engine/strategy/freqfilter"
-	fresource "github.com/uopensail/recgo-engine/strategy/freqfilter/resource"
-	"github.com/uopensail/recgo-engine/strategy/insert"
-	"github.com/uopensail/recgo-engine/strategy/rank"
-	"github.com/uopensail/recgo-engine/strategy/recalls/recall"
-
-	"github.com/uopensail/recgo-engine/strategy/scatter"
-	"github.com/uopensail/recgo-engine/strategy/weighted"
+	"github.com/uopensail/recgo-engine/pipeline"
+	"github.com/uopensail/recgo-engine/recapi"
 	"github.com/uopensail/recgo-engine/userctx"
+	"github.com/uopensail/ulib/prome"
+	"github.com/uopensail/ulib/sample"
 )
 
-const (
-	DefalutStrategy = "default"
-)
-
-type ModelEntities struct {
-	Model dbmodel.DBTabelModel // 配置引用
-
-	FilterResources fresource.Resources
-	Ress            resources.Resource
-
-	freqfilter.FilterEntities
-	recall.RecallEntities
-	scatter.ScatterEntities
-	insert.InsertEntities
-	rank.RankEntities
-	weighted.WeightedEntities
-	StrategyEntities
+// Strategy routes user requests to specific pipelines based on pipeline name in the request.
+type Strategy struct {
+	feeds   map[string]pipeline.IPipeline
+	related map[string]pipeline.IPipeline
 }
 
-type IStrategyEntity interface {
-	Do(uCtx *userctx.UserContext) (model.StageResult, error)
-	Meta() *table.StrategyEntityMeta
-}
+// NewStrategy builds a new Strategy from AppConfig, initializing pipelines for feeds and related.
+func NewStrategy(conf *config.AppConfig) *Strategy {
+	pStat := prome.NewStat("NewStrategy")
+	defer pStat.End()
 
-func BuildRuntimeEntity(entities *ModelEntities, uCtx *userctx.UserContext, entityMeta *table.StrategyEntityMeta) IStrategyEntity {
-
-	//确认是否命中实验
-	caseValue := uCtx.UserAB.AbInfo.EvalFeatureValue(uCtx.Context, entityMeta.ABLayerID)
-	if len(caseValue) > 0 {
-		//查找实验变体
-		relateID, err := strconv.Atoi(caseValue)
-		//abEntiy := Entities.Model.ABEntityTableModel.Get(int(expInfo.CaseId))
-		if err == nil {
-			//替换entiyMeta
-			expMeta := entities.Model.StrategyEntityTableModel.Get(relateID)
-			if expMeta != nil {
-				entityMeta = expMeta
-			}
+	feeds := make(map[string]pipeline.IPipeline, len(conf.Feeds))
+	for _, pconf := range conf.Feeds {
+		p := pipeline.NewPipeline(&pconf)
+		if p != nil {
+			feeds[pconf.Name] = p
 		}
 	}
-	cacheEntity := entities.StrategyEntities.GetStrategy(entityMeta.Name)
 
-	return BuildRuntimeDefaultStrategyEntity(cacheEntity, entities, uCtx)
+	related := make(map[string]pipeline.IPipeline, len(conf.Related))
+	for _, pconf := range conf.Related {
+		p := pipeline.NewPipeline(&pconf)
+		if p != nil {
+			related[pconf.Name] = p
+		}
+	}
 
+	if len(feeds) == 0 || len(related) == 0 {
+		panic(fmt.Errorf("build strategy fail: feeds or related pipelines missing"))
+	}
+
+	return &Strategy{
+		feeds:   feeds,
+		related: related,
+	}
 }
+
+// runPipeline executes the given pipeline for the given user context and builds a standard Response.
+func (s *Strategy) runPipeline(uCtx *userctx.UserContext, p pipeline.IPipeline) *recapi.Response {
+	if p == nil {
+		// Pipeline not found, return error response
+		return &recapi.Response{
+			Code:     -1,
+			Message:  fmt.Sprintf("pipeline not found: %s", uCtx.Request.Pipeline),
+			TraceId:  uCtx.Request.TraceId,
+			UserId:   uCtx.Request.UserId,
+			Pipeline: "",
+			Items:    []*recapi.ItemInfo{},
+			Count:    0,
+		}
+	}
+
+	collection := p.Do(uCtx)
+	resp := &recapi.Response{
+		Code:     0,
+		Message:  "success",
+		TraceId:  uCtx.Request.TraceId,
+		UserId:   uCtx.Request.UserId,
+		Pipeline: p.GetName(),
+		Items:    make([]*recapi.ItemInfo, 0, len(collection)),
+		Count:    len(collection),
+	}
+
+	var fea sample.Feature
+	for _, entry := range collection {
+		fea, _ = entry.Get(model.ChannelsKey)
+		channels, _ := fea.GetStrings()
+		fea, _ = entry.Get(model.ReasonsKey)
+		reasons, _ := fea.GetStrings()
+
+		resp.Items = append(resp.Items, &recapi.ItemInfo{
+			Item:     entry.Key,
+			Channels: channels,
+			Reasons:  reasons,
+		})
+	}
+
+	return resp
+}
+
+// Feeds returns feed recommendations for the given user context.
+func (s *Strategy) Feeds(uCtx *userctx.UserContext) *recapi.Response {
+	pStat := prome.NewStat(fmt.Sprintf("Strategy.Feed.%s", uCtx.Request.Pipeline))
+	defer pStat.End()
+
+	if p, ok := s.feeds[uCtx.Request.Pipeline]; ok {
+		return s.runPipeline(uCtx, p)
+	}
+	pStat.MarkErr()
+	return s.runPipeline(uCtx, nil)
+}
+
+// Related returns related item recommendations for the given user context.
+func (s *Strategy) Related(uCtx *userctx.UserContext) *recapi.Response {
+	pStat := prome.NewStat(fmt.Sprintf("Strategy.Related.%s", uCtx.Request.Pipeline))
+	defer pStat.End()
+
+	if p, ok := s.related[uCtx.Request.Pipeline]; ok {
+		return s.runPipeline(uCtx, p)
+	}
+	pStat.MarkErr()
+	return s.runPipeline(uCtx, nil)
+}
+
+// StrategyInstance is the global strategy singleton.
+var StrategyInstance *Strategy

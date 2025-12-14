@@ -1,93 +1,81 @@
 package config
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
+	"path/filepath"
 
-	"github.com/BurntSushi/toml"
-	"gopkg.in/yaml.v3"
-
-	"github.com/uopensail/kongming-sdk-go/sdkcore"
-
+	"github.com/pelletier/go-toml/v2"
+	"github.com/uopensail/recgo-engine/model"
 	"github.com/uopensail/ulib/commonconfig"
+	"gopkg.in/yaml.v3"
 )
 
-type EngineDataConfig struct {
-	URL string `toml:"url" yaml:"url"`
-}
-type GrowthBookSDKConfig struct {
-	APIHost   string `toml:"api_host" yaml:"api_host"`
-	ClientKey string `toml:"client_key" yaml:"client_key"`
-}
-
-type ABConfig struct {
-	Type                      string `toml:"type"  yaml:"type"`
-	sdkcore.KongMingSDKConfig `toml:"kongming"  yaml:"kongming"`
-	GrowthBookSDKConfig       `toml:"growthbook" yaml:"growthbook"`
+type ResourceConfig struct {
+	Name string `json:"name" yaml:"name" toml:"name"`
+	Dir  string `json:"dir" yaml:"dir" toml:"dir"`
 }
 
 type AppConfig struct {
-	EngineDataConfig          `toml:"engine_data" yaml:"engine_data"`
-	commonconfig.ServerConfig `toml:"server" yaml:"server"`
-	EnvConfig                 `toml:"env" yaml:"env"`
-	ABConfig                  `toml:"ab" yaml:"ab"`
-	ReportConfig              `toml:"report" yaml:"report"`
+	commonconfig.ServerConfig `json:"server" yaml:"server" toml:"server"`
+	ReportConfig              `json:"report" yaml:"report" toml:"report"`
+	Feeds                     []model.PipelineConfigure `json:"feeds" yaml:"feeds" toml:"feeds"`
+	Related                   []model.PipelineConfigure `json:"related" yaml:"related" toml:"related"`
+	Indexes                   []ResourceConfig          `json:"indexes" yaml:"indexes" toml:"indexes"`
+	Items                     ResourceConfig            `json:"items" yaml:"items" toml:"items"`
 }
+
 type SegmentConfig struct {
-	Endpoint string `json:"endpoint" toml:"endpoint"  yaml:"endpoint"`
-	WriteKey string `json:"write_key" toml:"write_key" yaml:"write_key"`
+	Endpoint string `json:"endpoint" yaml:"endpoint" toml:"endpoint"`
+	WriteKey string `json:"write_key" yaml:"write_key" toml:"write_key"`
 }
 
 type SLSLogConfig struct {
-	Endpoint string `json:"endpoint" toml:"endpoint"  yaml:"endpoint"`
-	AK       string `json:"ak" toml:"ak" yaml:"ak"`
-	SK       string `json:"sk" toml:"sk" yaml:"sk"`
-	RAM      string `json:"ram" toml:"ram" yaml:"ram"`
-	Project  string `json:"project" toml:"project" yaml:"project"`
-	LogStore string `json:"logstore" toml:"logstore" yaml:"logstore"`
-	Region   string `json:"region" toml:"region" yaml:"region"`
+	Endpoint string `json:"endpoint" yaml:"endpoint" toml:"endpoint"`
+	AK       string `json:"ak" yaml:"ak" toml:"ak"`
+	SK       string `json:"sk" yaml:"sk" toml:"sk"`
+	RAM      string `json:"ram" yaml:"ram" toml:"ram"`
+	Project  string `json:"project" yaml:"project" toml:"project"`
+	LogStore string `json:"logstore" yaml:"logstore" toml:"logstore"`
+	Region   string `json:"region" yaml:"region" toml:"region"`
 }
+
 type ReportConfig struct {
-	Type          string `json:"type" toml:"type" yaml:"type"`
-	SegmentConfig `json:"segment" toml:"segment" yaml:"segment"`
-	SLSLogConfig  `json:"slslog" toml:"slslog" yaml:"slslog"`
+	Type          string `json:"type" yaml:"type" toml:"type"`
+	SegmentConfig `json:"segment" yaml:"segment" toml:"segment"`
+	SLSLogConfig  `json:"slslog" yaml:"slslog" toml:"slslog"`
 }
 
-type EnvConfig struct {
-	Finder  commonconfig.FinderConfig `json:"finder" toml:"finder" yaml:"finder"`
-	WorkDir string                    `json:"work_dir" toml:"work_dir" yaml:"work_dir"`
-}
+// Global AppConfig instance
+var AppConfigInstance *AppConfig
 
-var AppConfigInstance AppConfig
-
-func (conf *AppConfig) Init(filePath string) {
-	fData, err := ioutil.ReadFile(filePath)
+// Init loads configuration from a JSON, YAML, or TOML file.
+// Returns an error instead of panic, allowing caller to decide handling.
+func (conf *AppConfig) Init(filePath string) error {
+	fData, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Errorf("ioutil.ReadFile error: %s", err)
-		panic(err)
-	}
-	_, err = toml.Decode(string(fData), conf)
-	if err != nil {
-		fmt.Errorf("Unmarshal error: %s", err)
-	} else {
-		return
+		return fmt.Errorf("os.ReadFile error: %w", err)
 	}
 
-	err = yaml.NewDecoder(bytes.NewReader(fData)).Decode(conf)
-	if err != nil {
-		fmt.Errorf("Unmarshal error: %s", err)
-	} else {
-		return
+	ext := filepath.Ext(filePath)
+	switch ext {
+	case ".json":
+		if err := json.Unmarshal(fData, conf); err != nil {
+			return fmt.Errorf("json.Unmarshal error: %w", err)
+		}
+	case ".yaml", ".yml":
+		if err := yaml.Unmarshal(fData, conf); err != nil {
+			return fmt.Errorf("yaml.Unmarshal error: %w", err)
+		}
+	case ".toml":
+		if err := toml.Unmarshal(fData, conf); err != nil {
+			return fmt.Errorf("toml.Unmarshal error: %w", err)
+		}
+	default:
+		return fmt.Errorf("unsupported config file format: %s", ext)
 	}
 
-	err = json.Unmarshal(fData, conf)
-	if err != nil {
-		fmt.Errorf("Unmarshal error: %s", err)
-	} else {
-		return
-	}
-	panic(err)
-	fmt.Printf("InitAppConfig:%v yaml:%s\n", conf, string(fData))
+	fmt.Printf("InitAppConfig: %+v\n", conf)
+	return nil
 }

@@ -1,217 +1,123 @@
 package model
 
 import (
-	"github.com/uopensail/recgo-engine/model/dbmodel/table"
-	"github.com/uopensail/ulib/pool"
+	"fmt"
+
 	"github.com/uopensail/ulib/sample"
+	"github.com/uopensail/ulib/zlog"
+	"go.uber.org/zap"
 )
 
-type IFliter interface {
-	Check(id int) bool //True：pass,False : filted
+// IFilter defines a filter interface used in recommendation pipeline.
+// Exists returns true if the ID should be filtered out.
+// Exclude returns a list of keys to be excluded.
+type IFilter interface {
+	Exists(id int) bool // True: filtered, False: pass
+	Exclude() []string
 }
 
-type RecallRecord struct {
-	ID    int
-	Score float32
-	Info  string
-}
-type ItemFeatures struct {
-	Source     *pool.Features
-	MutFeature *sample.MutableFeatures
+// Resource defines basic information for loaded resources.
+type Resource interface {
+	GetUpdateTime() int64
+	GetURL() string
 }
 
-func (f *ItemFeatures) Keys() []string {
+// Keys used in runtime features to store channels and reasons.
+const (
+	ChannelsKey = "i_ctx_chans"
+	ReasonsKey  = "i_ctx_reasons"
+)
 
-	ret := make([]string, 0, f.Source.Feats.Len()+f.MutFeature.Len())
-	ret = append(ret, f.Source.Feats.Keys()...)
-	ret = append(ret, f.MutFeature.Keys()...)
-	return ret
-}
-
-func (f *ItemFeatures) Len() int {
-	return f.Source.Feats.Len() + f.MutFeature.Len()
-}
-
-func (f *ItemFeatures) Get(key string) sample.Feature {
-	if v := f.MutFeature.Get(key); v != nil {
-		return v
-	}
-	return f.Source.Feats.Get(key)
+// Entry represents a candidate item in recommendation pipeline,
+// including its item ID, score, and runtime features (channels, reasons, etc.).
+type Entry struct {
+	ID int
+	KeyScore
+	Runtime
 }
 
-func (f *ItemFeatures) Set(key string, value sample.Feature) {
-	f.MutFeature.Set(key, value)
-}
-func (f *ItemFeatures) MapAny() map[string]any {
-	return f.Source.Feats.MapAny()
-}
-func (f *ItemFeatures) MarshalJSON() ([]byte, error) {
-	feats := sample.NewMutableFeatures()
-	keys := f.Source.Feats.Keys()
-	for _, key := range keys {
-		feat := f.Source.Get(key)
-		feats.Set(key, feat)
+// NewEntry creates a new Entry from a KeyScore and Items.
+// It initializes empty channel and reason lists in runtime features.
+// Returns an error if the key cannot be found in Items.
+func NewEntry(k KeyScore, items *Items) (*Entry, error) {
+	id, feas := items.GetByKey(k.Key)
+	if feas == nil {
+		zlog.LOG.Error("Entry.NewEntry.KeyNotFound", zap.String("key", k.Key))
+		return nil, fmt.Errorf("key miss: %s", k.Key)
 	}
 
-	keys = f.MutFeature.Keys()
-	for _, key := range keys {
-		feat := f.MutFeature.Get(key)
-		feats.Set(key, feat)
-	}
+	r := NewRuntime(feas)
+	r.Set(ChannelsKey, &sample.Strings{Value: make([]string, 0, 8)})
+	r.Set(ReasonsKey, &sample.Strings{Value: make([]string, 0, 8)})
 
-	return feats.MarshalJSON()
+	zlog.LOG.Info("Entry.NewEntry.Created", zap.Int("id", id), zap.String("key", k.Key))
+	return &Entry{id, k, *r}, nil
 }
 
-func (f *ItemFeatures) UnmarshalJSON(data []byte) error {
-	return f.Source.Feats.UnmarshalJSON(data)
+// AddChan adds a channel and reason to the entry's runtime features.
+// This will update both channel and reason lists.
+func (entry *Entry) AddChan(channel string, reason string) {
+	// Update channels
+	feaChan, _ := entry.Get(ChannelsKey)
+	chList, _ := feaChan.GetStrings()
+	chList = append(chList, channel)
+	entry.Set(ChannelsKey, &sample.Strings{Value: chList})
+
+	// Update reasons
+	feaReason, _ := entry.Get(ReasonsKey)
+	reasonList, _ := feaReason.GetStrings()
+	reasonList = append(reasonList, reason)
+	entry.Set(ReasonsKey, &sample.Strings{Value: reasonList})
+
+	zlog.LOG.Info("Entry.AddChan", zap.Int("id", entry.ID), zap.String("channel", channel), zap.String("reason", reason))
 }
 
-type ItemRefScore struct {
-	ItemFeatures
-	RecallRecord
-}
-type ItemRefList []*pool.Features
+// MergeChans merges channels and reasons from another Entry into this Entry.
+// The source Entry is not modified.
+func (entry *Entry) MergeChans(src *Entry) {
+	// Merge channels
+	feaChanDst, _ := entry.Get(ChannelsKey)
+	dstChList, _ := feaChanDst.GetStrings()
 
-type ItemScoreList []ItemRefScore
+	feaChanSrc, _ := src.Get(ChannelsKey)
+	srcChList, _ := feaChanSrc.GetStrings()
 
-func (list ItemScoreList) Less(i, j int) bool {
-	return list[i].Score > list[j].Score
-}
+	dstChList = append(dstChList, srcChList...)
+	entry.Set(ChannelsKey, &sample.Strings{Value: dstChList})
 
-func (list ItemScoreList) Len() int {
-	return len(list)
-}
+	// Merge reasons
+	feaReasonDst, _ := entry.Get(ReasonsKey)
+	dstReasonList, _ := feaReasonDst.GetStrings()
 
-func (list ItemScoreList) Swap(i, j int) {
-	list[i], list[j] = list[j], list[i]
-}
+	feaReasonSrc, _ := src.Get(ReasonsKey)
+	srcReasonList, _ := feaReasonSrc.GetStrings()
 
-type ItemRefListSortHelper struct {
-	ItemRefList
-	SortFieldName string
-}
+	dstReasonList = append(dstReasonList, srcReasonList...)
+	entry.Set(ReasonsKey, &sample.Strings{Value: dstReasonList})
 
-func (x ItemRefListSortHelper) Len() int { // 重写 Len() 方法
-	return len(x.ItemRefList)
-}
-func (x ItemRefListSortHelper) Swap(i, j int) { // 重写 Swap() 方法
-	x.ItemRefList[i], x.ItemRefList[j] = x.ItemRefList[j], x.ItemRefList[i]
-}
-func (x ItemRefListSortHelper) Less(i, j int) bool { // 重写 Less() 方法， 从大到小排序
-	a := x.ItemRefList[i]
-	b := x.ItemRefList[j]
-	aScore, _ := a.Feats.Get(x.SortFieldName).GetFloat32()
-	bScore, _ := b.Feats.Get(x.SortFieldName).GetFloat32()
-	return aScore > bScore
+	zlog.LOG.Info("Entry.MergeChans",
+		zap.Int("dst_id", entry.ID),
+		zap.Int("src_id", src.ID),
+		zap.Int("merged_channels_count", len(srcChList)),
+		zap.Int("merged_reasons_count", len(srcReasonList)),
+	)
 }
 
-type RecallResult struct {
-	Items ItemScoreList
+// Collection is a slice of Entry pointers.
+// It implements sort.Interface to allow sorting by Score in descending order.
+type Collection []*Entry
 
-	Meta *table.RecallEntityMeta
+// Less returns true if entry at index i has a higher score than entry at index j.
+func (c Collection) Less(i, j int) bool {
+	return c[i].KeyScore.Score > c[j].KeyScore.Score
 }
 
-type RecItemList ItemScoreList
-
-func (list RecItemList) GetRecCollection() []int {
-	ret := make([]int, len(list))
-	for i := 0; i < len(list); i++ {
-		ret[i] = list[i].ID
-	}
-	return ret
+// Len returns the number of entries in the collection.
+func (c Collection) Len() int {
+	return len(c)
 }
 
-type ItemRecallTrace struct {
-	RecallIndex []int //   索引
-
-}
-
-// recall 结束不会再变了
-type RecallTrace struct {
-	//TODO: use key的编号
-	ItemRecallNameMap map[int]*ItemRecallTrace //   索引
-	RecallResults     []RecallResult
-}
-
-func (rt *RecallTrace) ExistRecall(itemInsideNum int, recallIndex int) bool {
-	if v, ok := rt.ItemRecallNameMap[itemInsideNum]; ok {
-		for i := 0; i < len(v.RecallIndex); i++ {
-			if v.RecallIndex[i] == recallIndex {
-				return true
-			}
-		}
-	}
-	return false
-}
-func (rt *RecallTrace) GetRecallNames(itemInsideNum int) []string {
-	if v, ok := rt.ItemRecallNameMap[itemInsideNum]; ok {
-		recalls := make([]string, len(v.RecallIndex))
-		for i := 0; i < len(v.RecallIndex); i++ {
-			recalls[i] = rt.RecallResults[v.RecallIndex[i]].Meta.EntityMeta.Name
-		}
-		return recalls
-	}
-	return nil
-}
-
-func (rt *RecallTrace) GetRecallIndex(name string) int {
-	for i := 0; i < len(rt.RecallResults); i++ {
-		if rt.RecallResults[i].Meta.EntityMeta.Name == name {
-			return i
-		}
-	}
-	return -1
-}
-
-type WeighedTrace struct {
-	InScoreRecord map[int]float32
-	WeighedRecord map[int]string
-}
-
-type RankTrace struct {
-	ScoreRecord map[int]float32 //打分记录
-}
-
-type LayoutTrace struct {
-	BreakLayoutRecord map[int]int
-}
-
-type StageResult struct {
-	StageList RecItemList
-
-	RecallTrace
-	WeighedTrace
-	RankTrace
-	LayoutTrace
-}
-
-func MergeStageResult(a StageResult, b StageResult) StageResult {
-
-	c := StageResult{
-		StageList:   make(RecItemList, 0, len(a.StageList)+len(b.StageList)),
-		RecallTrace: RecallTrace{},
-	}
-	c.StageList = append(a.StageList, b.StageList...)
-
-	c.ItemRecallNameMap = a.ItemRecallNameMap
-	aRecallLen := len(a.RecallResults)
-	c.RecallResults = append(a.RecallResults, b.RecallResults...)
-	for k, v := range b.ItemRecallNameMap {
-		for i := 0; i < len(v.RecallIndex); i++ {
-			vi := v.RecallIndex[i] + aRecallLen
-			if _, ok := c.ItemRecallNameMap[k]; ok == false {
-				c.ItemRecallNameMap[k] = &ItemRecallTrace{}
-			}
-			c.ItemRecallNameMap[k].RecallIndex = append(c.ItemRecallNameMap[k].RecallIndex, vi)
-
-		}
-
-	}
-
-	return c
-}
-
-type StatusResponse struct {
-	Code int32  `json:"code"`
-	Msg  string `json:"msg"`
+// Swap exchanges the entries at indexes i and j.
+func (c Collection) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
 }
