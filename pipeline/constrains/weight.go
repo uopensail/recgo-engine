@@ -1,12 +1,11 @@
 package constrains
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/uopensail/recgo-engine/model"
+	"github.com/uopensail/recgo-engine/program"
 	"github.com/uopensail/recgo-engine/userctx"
-	"github.com/uopensail/ulib/minia"
 	"github.com/uopensail/ulib/prome"
 	"github.com/uopensail/ulib/zlog"
 	"go.uber.org/zap"
@@ -17,14 +16,19 @@ import (
 // This constraint is useful to promote or demote certain items while maintaining order.
 type WeightAdjust struct {
 	conf    *model.WeightAdjustedConstrainConfigure // configuration for weight adjustment
-	program *minia.Minia                            // compiled condition program
+	program *program.Program                        // compiled condition program
 }
 
 // NewWeightAdjust constructs a WeightAdjust from the given configuration.
 func NewWeightAdjust(conf *model.WeightAdjustedConstrainConfigure) *WeightAdjust {
 	pStat := prome.NewStat("NewWeightAdjust")
 	defer pStat.End()
-	program := minia.NewMinia([]string{fmt.Sprintf("result=%s", conf.Condition)})
+	program, err := program.NewProgram(conf.Condition)
+	if err != nil {
+		zlog.LOG.Error("NewFixedPositionInsert program create error",
+			zap.Error(err))
+		panic(err)
+	}
 	return &WeightAdjust{
 		conf:    conf,
 		program: program,
@@ -39,24 +43,23 @@ func (w *WeightAdjust) Do(uCtx *userctx.UserContext, collection model.Collection
 	defer pStat.End()
 	for _, entry := range collection {
 		// Make sure the parameter order matches other modules: basic, user features, runtime.
-		value := w.program.Eval(entry.Runtime.Basic, uCtx.Features, entry.Runtime.RunTime)
-		if value != nil {
-			result := value.Get("result")
-			if result == nil {
-				continue
-			}
-			hit, err := result.GetInt64()
-			if err == nil && hit == 1 {
-				// Apply score adjustment
-				oldScore := entry.KeyScore.Score
-				entry.KeyScore.Score *= w.conf.Ratio
+		value, err := w.program.Eval(entry.Runtime.Basic, uCtx.Features, entry.Runtime.RunTime)
+		if err != nil {
+			zlog.LOG.Error("WeightAdjust.Do program eval error",
+				zap.Error(err))
+		}
 
-				zlog.LOG.Debug("WeightAdjust.Applied",
-					zap.String("entry_key", entry.KeyScore.Key),
-					zap.Float32("old_score", oldScore),
-					zap.Float32("new_score", entry.KeyScore.Score),
-					zap.Float32("ratio", w.conf.Ratio))
-			}
+		hit, ok := value.(int64)
+		if ok && hit == 1 {
+			// Apply score adjustment
+			oldScore := entry.KeyScore.Score
+			entry.KeyScore.Score *= w.conf.Ratio
+
+			zlog.LOG.Debug("WeightAdjust.Applied",
+				zap.String("entry_key", entry.KeyScore.Key),
+				zap.Float32("old_score", oldScore),
+				zap.Float32("new_score", entry.KeyScore.Score),
+				zap.Float32("ratio", w.conf.Ratio))
 		}
 	}
 

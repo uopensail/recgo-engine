@@ -1,11 +1,9 @@
 package constrains
 
 import (
-	"fmt"
-
 	"github.com/uopensail/recgo-engine/model"
+	"github.com/uopensail/recgo-engine/program"
 	"github.com/uopensail/recgo-engine/userctx"
-	"github.com/uopensail/ulib/minia"
 	"github.com/uopensail/ulib/prome"
 	"github.com/uopensail/ulib/zlog"
 	"go.uber.org/zap"
@@ -15,14 +13,19 @@ import (
 // The condition is evaluated via a Minia rule and returns 1 if the entry should be fixed.
 type FixedPositionInsert struct {
 	conf    *model.FixedPositionInsertedConstrainConfigure // constraint configuration
-	program *minia.Minia                                   // compiled condition program
+	program *program.Program                               // compiled condition program
 }
 
 // NewFixedPositionInsert creates a fixed-position constraint from configuration.
 func NewFixedPositionInsert(conf *model.FixedPositionInsertedConstrainConfigure) *FixedPositionInsert {
 	pStat := prome.NewStat("NewFixedPositionInsert")
 	defer pStat.End()
-	program := minia.NewMinia([]string{fmt.Sprintf("result=%s", conf.Condition)})
+	program, err := program.NewProgram(conf.Condition)
+	if err != nil {
+		zlog.LOG.Error("NewFixedPositionInsert program create error",
+			zap.Error(err))
+		panic(err)
+	}
 	return &FixedPositionInsert{
 		conf:    conf,
 		program: program,
@@ -42,14 +45,14 @@ func (f *FixedPositionInsert) Do(uCtx *userctx.UserContext, collection model.Col
 
 	for i, entry := range collection {
 		// Ensure parameter order matches the rest of the engine: basic, user features, runtime
-		value := f.program.Eval(entry.Runtime.Basic, uCtx.Features, entry.Runtime.RunTime)
-		result := value.Get("result")
-		if result == nil {
-			continue
+		value, err := f.program.Eval(entry.Runtime.Basic, uCtx.Features, entry.Runtime.RunTime)
+		if err != nil {
+			zlog.LOG.Error("FixedPositionInsert.Do program eval error",
+				zap.Error(err))
 		}
 
-		hit, err := result.GetInt64()
-		if err == nil && hit == 1 {
+		hit, ok := value.(int64)
+		if ok && hit == 1 {
 			zlog.LOG.Info("FixedPositionInsert.Hit",
 				zap.String("key", entry.KeyScore.Key),
 				zap.Int("current_index", i),

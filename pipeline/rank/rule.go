@@ -1,12 +1,12 @@
 package rank
 
 import (
-	"fmt"
+	"errors"
 	"sort"
 
 	"github.com/uopensail/recgo-engine/model"
+	"github.com/uopensail/recgo-engine/program"
 	"github.com/uopensail/recgo-engine/userctx"
-	"github.com/uopensail/ulib/minia"
 	"github.com/uopensail/ulib/prome"
 	"github.com/uopensail/ulib/zlog"
 	"go.uber.org/zap"
@@ -16,7 +16,7 @@ import (
 // The rule is evaluated via a Minia expression using entry runtime features and user context.
 type Rule struct {
 	conf    *model.RuleBasedRankConfigure // rank configuration
-	program *minia.Minia                  // compiled Minia rule program
+	program *program.Program              // compiled Minia rule program
 }
 
 // NewRule creates a new Rule ranker with the provided configuration.
@@ -25,9 +25,18 @@ func NewRule(conf *model.RuleBasedRankConfigure) *Rule {
 	pStat := prome.NewStat("Rank.NewRule")
 	defer pStat.End()
 	if conf.Rule == "" {
-		zlog.LOG.Warn("NewRule.EmptyRule", zap.String("name", conf.Name))
+		msg := "Rank.NewRule.EmptyRule"
+		zlog.LOG.Error(msg, zap.String("name", conf.Name))
+		panic(errors.New(msg))
 	}
-	program := minia.NewMinia([]string{fmt.Sprintf("result=%s", conf.Rule)})
+
+	program, err := program.NewProgram(conf.Rule)
+	if err != nil {
+		zlog.LOG.Error("Rank.NewRule program create error",
+			zap.Error(err))
+		panic(err)
+	}
+
 	return &Rule{
 		conf:    conf,
 		program: program,
@@ -44,20 +53,19 @@ func (rule *Rule) Do(uCtx *userctx.UserContext, collection model.Collection) mod
 
 	for _, entry := range collection {
 		// Evaluate rule
-		result := rule.program.Eval(entry.Runtime.Basic, uCtx.Features, entry.Runtime.RunTime)
-		scoreFeature := result.Get("result")
+		value, err := rule.program.Eval(entry.Runtime.Basic, uCtx.Features, entry.Runtime.RunTime)
+		if err != nil {
+			zlog.LOG.Error("Rank.Rule.Do program eval error",
+				zap.Error(err))
+		}
 
 		// Default score
-		entry.KeyScore.Score = 0
-
-		// Extract score from feature
-		if scoreFeature != nil {
-			val, err := scoreFeature.GetFloat32()
-			if err == nil {
-				entry.KeyScore.Score = val
-			} else {
-				zlog.LOG.Warn("Rule.Do.ScoreExtractError", zap.String("key", entry.KeyScore.Key), zap.Error(err))
-			}
+		entry.KeyScore.Score = 0.0
+		score, ok := value.(float32)
+		if ok {
+			entry.KeyScore.Score = score
+		} else {
+			zlog.LOG.Error("Rule.Do.ScoreExtractError", zap.String("key", entry.KeyScore.Key))
 		}
 
 		// Debug log
