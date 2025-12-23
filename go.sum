@@ -348,6 +348,8 @@ github.com/twitchyliquid64/golang-asm v0.15.1/go.mod h1:a1lVb/DtPvCB8fslRZhAngC2
 github.com/ugorji/go v1.1.7/go.mod h1:kZn38zHttfInRq0xu/PH0az30d+z6vm202qpg1oXVMw=
 github.com/ugorji/go/codec v1.1.7 h1:2SvQaVZ1ouYrrKKwoSk2pzd4A9evlKJb9oTL+OaLUSs=
 github.com/ugorji/go/codec v1.1.7/go.mod h1:Ax+UKWsSmolVDwsd+7N3ZtXu+yMGCf907BLYF3GoBXY=
+github.com/uopensail/ulib v0.0.22-0.20251223144854-9c6902cf36a2 h1:dQ++ciMGd+0ZVOBwGvwNNP8MtS3JRcQt5SMF83CEcWg=
+github.com/uopensail/ulib v0.0.22-0.20251223144854-9c6902cf36a2/go.mod h1:T3S8mMZeLXSaZ5a11ltv4i+oojS1SdoBQRl7fzAvcDQ=
 github.com/uopensail/ulib v0.0.22 h1:rq51Ix1cb0Q2+jEhRtYYwDRV+LsJq2WnBZhwiHsCmZc=
 github.com/uopensail/ulib v0.0.22/go.mod h1:T3S8mMZeLXSaZ5a11ltv4i+oojS1SdoBQRl7fzAvcDQ=
 github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=

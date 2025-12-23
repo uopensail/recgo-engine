@@ -9,7 +9,7 @@ require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-kratos/kratos/v2 v2.7.0
 	github.com/segmentio/analytics-go v3.1.0+incompatible
-	github.com/uopensail/ulib v0.0.0-031ca03a921dfdd391776864a2d65b2458774ad9
+	github.com/uopensail/ulib v0.0.22-0.20251223144854-9c6902cf36a2
 	go.uber.org/zap v1.26.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.1
@@ -60,4 +60,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 )
-
